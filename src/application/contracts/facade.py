@@ -54,6 +54,18 @@ class CourseAccessGrantView:
     version: int
 
 
+@dataclass(frozen=True, slots=True)
+class AccessCheckView:
+    """Read-модель проверки доступа ученика к курсу."""
+
+    has_access: bool
+    course_id: str
+    student_id: str
+    access_grant_id: str | None = None
+    status: str | None = None
+    expires_at: datetime | None = None
+
+
 class ApplicationFacade(Protocol):
     """Единая точка входа для interface-слоя."""
 
@@ -89,3 +101,6 @@ class ApplicationFacade(Protocol):
         self, query: ListPaymentsByParentQuery
     ) -> list[PaymentIntentView]:
         """Возвращает платежи родителя."""
+
+    def check_course_access(self, course_id: str, student_id: str) -> AccessCheckView:
+        """Проверяет активный доступ ученика к курсу."""

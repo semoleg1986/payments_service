@@ -1,3 +1,11 @@
+fastapi
+uvicorn
+pydantic
+httpx
+PyJWT
+SQLAlchemy
+psycopg[binary]
+alembic
 pytest
 
 black

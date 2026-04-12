@@ -15,6 +15,9 @@ install: requirements ## Установить зависимости
 test: ## Запустить все тесты с подробным выводом
 	pytest -v
 
+test-quick: ## Быстрый прогон тестов
+	pytest -q
+
 # ========================
 # Code Quality
 # ========================
@@ -28,6 +31,15 @@ lint: ## Проверка стиля и типов (flake8 + mypy)
 	mypy .
 
 check: format lint test ## Полная проверка качества кода
+
+migrate: ## Применить миграции Alembic
+	alembic upgrade head
+
+makemigration: ## Создать миграцию Alembic (пример: make makemigration MSG=init)
+	alembic revision --autogenerate -m "$(MSG)"
+
+run: ## Запустить HTTP API локально
+	uvicorn src.interface.http.main:app --host 0.0.0.0 --port 8004 --reload
 
 # ========================
 # Pre-commit

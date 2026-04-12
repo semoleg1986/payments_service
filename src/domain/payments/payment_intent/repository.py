@@ -20,3 +20,6 @@ class PaymentIntentRepository(Protocol):
 
     def save(self, intent: PaymentIntent) -> None:
         """Сохраняет агрегат PaymentIntent."""
+
+    def list_by_parent(self, parent_id: str) -> list[PaymentIntent]:
+        """Возвращает список intent для parent_id."""

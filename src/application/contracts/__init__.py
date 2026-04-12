@@ -7,11 +7,13 @@ from .commands import (
     RejectPaymentIntentCommand,
 )
 from .facade import (
+    AccessCheckView,
     ApplicationFacade,
     CourseAccessGrantView,
     PaymentIntentView,
 )
 from .ports import (
+    AccessTokenVerifier,
     AttributionDiscountPort,
     Clock,
     CourseAccessGrantRepositoryPort,
@@ -30,6 +32,8 @@ from .queries import (
 )
 
 __all__ = [
+    "AccessCheckView",
+    "AccessTokenVerifier",
     "ApplicationFacade",
     "ApprovePaymentIntentCommand",
     "AttributionDiscountPort",

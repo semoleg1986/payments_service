@@ -53,6 +53,9 @@ class PaymentIntentRepositoryPort(Protocol):
     def save(self, intent: PaymentIntent) -> None:
         """Сохраняет intent."""
 
+    def list_by_parent(self, parent_id: str) -> list[PaymentIntent]:
+        """Возвращает платежи родителя."""
+
 
 class CourseAccessGrantRepositoryPort(Protocol):
     """Порт репозитория CourseAccessGrant."""
@@ -67,6 +70,13 @@ class CourseAccessGrantRepositoryPort(Protocol):
         self, course_id: str, student_id: str
     ) -> bool:
         """Проверяет наличие active-доступа по course/student."""
+
+    def find_by_course_and_student(
+        self,
+        course_id: str,
+        student_id: str,
+    ) -> CourseAccessGrant | None:
+        """Возвращает доступ для пары course/student."""
 
     def save(self, access_grant: CourseAccessGrant) -> None:
         """Сохраняет access grant."""
@@ -114,3 +124,10 @@ class AttributionDiscountPort(Protocol):
         parent_id: str,
     ) -> DiscountSnapshot:
         """Возвращает скидку для расчета final_price."""
+
+
+class AccessTokenVerifier(Protocol):
+    """Порт верификатора access token."""
+
+    def decode_access(self, access_token: str) -> dict[str, str | list[str]]:
+        """Декодирует access token и возвращает claims."""
