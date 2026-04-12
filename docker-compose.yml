@@ -1,0 +1,43 @@
+services:
+  payments_postgres:
+    image: postgres:16-alpine
+    container_name: payments_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-payments_service}
+      TZ: UTC
+    ports:
+      - "5434:5432"
+    volumes:
+      - payments_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-payments_service}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  payments_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payments_service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PAYMENTS_DATABASE_URL: ${PAYMENTS_DATABASE_URL:-postgresql+psycopg://postgres:postgres@payments_postgres:5432/payments_service}
+      PAYMENTS_USE_INMEMORY: ${PAYMENTS_USE_INMEMORY:-0}
+      PAYMENTS_AUTO_CREATE_SCHEMA: ${PAYMENTS_AUTO_CREATE_SCHEMA:-0}
+      PAYMENTS_APP_HOST: 0.0.0.0
+      PAYMENTS_APP_PORT: 8004
+    depends_on:
+      payments_postgres:
+        condition: service_healthy
+    ports:
+      - "8004:8004"
+
+volumes:
+  payments_postgres_data:
+
