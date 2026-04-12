@@ -1,0 +1,33 @@
+repos:
+  # --- Импорт и сортировка ---
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.10.1
+    hooks:
+      - id: isort
+  # --- Автоформатирование кода ---
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+      - id: black
+
+  # --- Проверка стиля и ошибок ---
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+
+  # --- Проверка типов ---
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.5.1
+    hooks:
+      - id: mypy
+        args: [ "--install-types", "--non-interactive" ]
+
+  # --- Локальный хук для тестов ---
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest tests
+        language: system
+        pass_filenames: false
