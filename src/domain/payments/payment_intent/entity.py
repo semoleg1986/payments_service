@@ -45,10 +45,6 @@ class PaymentIntent:
 
         if not payment_intent_id.strip():
             raise InvariantViolationError("payment_intent_id обязателен.")
-        if created_by != context.parent_id:
-            raise InvariantViolationError(
-                "Создатель intent должен совпадать с parent_id."
-            )
 
         final_price = discount.apply_to(base_price)
         entity = cls(

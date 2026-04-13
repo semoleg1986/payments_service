@@ -38,3 +38,24 @@ def test_create_and_approve_payment_happy_path() -> None:
     )
     assert grant.status == "active"
     assert grant.student_id == "student-1"
+
+
+def test_admin_can_create_payment_intent_for_parent() -> None:
+    runtime = build_runtime()
+    facade = runtime.facade
+
+    payment = facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            course_id="course-1",
+            attribution_token=None,
+            idempotency_key="idem-admin-201",
+            actor_id="admin-1",
+            actor_roles=("admin",),
+        )
+    )
+
+    assert payment.status == "pending"
+    assert payment.parent_id == "parent-1"
