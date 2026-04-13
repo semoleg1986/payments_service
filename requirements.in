@@ -3,6 +3,7 @@ uvicorn
 pydantic
 httpx
 PyJWT
+cryptography
 SQLAlchemy
 psycopg[binary]
 alembic
