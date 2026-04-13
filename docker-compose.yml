@@ -30,6 +30,7 @@ services:
       PAYMENTS_DATABASE_URL: ${PAYMENTS_DATABASE_URL:-postgresql+psycopg://postgres:postgres@payments_postgres:5432/payments_service}
       PAYMENTS_USE_INMEMORY: ${PAYMENTS_USE_INMEMORY:-0}
       PAYMENTS_AUTO_CREATE_SCHEMA: ${PAYMENTS_AUTO_CREATE_SCHEMA:-0}
+      PAYMENTS_INTEGRATIONS_USE_INMEMORY: ${PAYMENTS_INTEGRATIONS_USE_INMEMORY:-1}
       PAYMENTS_APP_HOST: 0.0.0.0
       PAYMENTS_APP_PORT: 8004
     depends_on:
@@ -40,4 +41,3 @@ services:
 
 volumes:
   payments_postgres_data:
-

@@ -22,6 +22,13 @@ class Settings:
     auth_audience: str
     service_token: str
     default_currency: str
+    integrations_use_inmemory: bool
+    course_service_base_url: str
+    course_service_token: str
+    course_service_timeout_seconds: float
+    users_service_base_url: str
+    users_service_token: str
+    users_service_timeout_seconds: float
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -44,4 +51,26 @@ class Settings:
             auth_audience=os.getenv("PAYMENTS_AUTH_AUDIENCE", "platform_clients"),
             service_token=os.getenv("PAYMENTS_SERVICE_TOKEN", "dev-service-token"),
             default_currency=os.getenv("PAYMENTS_DEFAULT_CURRENCY", "USD"),
+            integrations_use_inmemory=os.getenv(
+                "PAYMENTS_INTEGRATIONS_USE_INMEMORY", "1"
+            )
+            == "1",
+            course_service_base_url=os.getenv(
+                "PAYMENTS_COURSE_SERVICE_BASE_URL", "http://localhost:8001"
+            ),
+            course_service_token=os.getenv(
+                "PAYMENTS_COURSE_SERVICE_TOKEN", "dev-service-token"
+            ),
+            course_service_timeout_seconds=float(
+                os.getenv("PAYMENTS_COURSE_SERVICE_TIMEOUT_SECONDS", "2")
+            ),
+            users_service_base_url=os.getenv(
+                "PAYMENTS_USERS_SERVICE_BASE_URL", "http://localhost:8002"
+            ),
+            users_service_token=os.getenv(
+                "PAYMENTS_USERS_SERVICE_TOKEN", "dev-service-token"
+            ),
+            users_service_timeout_seconds=float(
+                os.getenv("PAYMENTS_USERS_SERVICE_TIMEOUT_SECONDS", "2")
+            ),
         )

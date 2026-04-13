@@ -20,6 +20,8 @@ from src.infrastructure.db.sqlalchemy.uow import SqlAlchemyUnitOfWork
 from src.infrastructure.integrations.in_memory.attribution_discount import (
     InMemoryAttributionDiscountPort,
 )
+from src.infrastructure.integrations.http.course_catalog import HttpCourseCatalogPort
+from src.infrastructure.integrations.http.user_relations import HttpUserRelationsPort
 from src.infrastructure.integrations.in_memory.course_catalog import (
     InMemoryCourseCatalogPort,
 )
@@ -72,11 +74,26 @@ def build_runtime() -> RuntimeContainer:
         access_repo = SqlAlchemyCourseAccessGrantRepository(session_factory)
         uow = SqlAlchemyUnitOfWork(session_factory)
 
+    if settings.integrations_use_inmemory:
+        course_catalog = InMemoryCourseCatalogPort()
+        user_relations = InMemoryUserRelationsPort()
+    else:
+        course_catalog = HttpCourseCatalogPort(
+            base_url=settings.course_service_base_url,
+            service_token=settings.course_service_token,
+            timeout_seconds=settings.course_service_timeout_seconds,
+        )
+        user_relations = HttpUserRelationsPort(
+            base_url=settings.users_service_base_url,
+            service_token=settings.users_service_token,
+            timeout_seconds=settings.users_service_timeout_seconds,
+        )
+
     facade = PaymentApplicationFacade(
         payment_repo=payment_repo,
         access_repo=access_repo,
-        course_catalog=InMemoryCourseCatalogPort(),
-        user_relations=InMemoryUserRelationsPort(),
+        course_catalog=course_catalog,
+        user_relations=user_relations,
         attribution=InMemoryAttributionDiscountPort(),
         id_generator=UuidGenerator(),
         clock=UtcClock(),
