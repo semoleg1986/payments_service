@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -10,6 +12,7 @@ from src.domain.payments.course_access_grant.value_objects import AccessSubject
 from src.domain.shared.entity import EntityMeta
 from src.domain.shared.statuses import AccessStatus
 from src.infrastructure.db.sqlalchemy.models import CourseAccessGrantModel
+from src.infrastructure.db.sqlalchemy.session_context import get_current_session
 
 
 class SqlAlchemyCourseAccessGrantRepository:
@@ -18,13 +21,22 @@ class SqlAlchemyCourseAccessGrantRepository:
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def get(self, access_grant_id: str) -> CourseAccessGrant | None:
+    @contextmanager
+    def _session(self) -> Session:
+        current = get_current_session()
+        if current is not None:
+            yield current
+            return
         with self._session_factory() as session:
+            yield session
+
+    def get(self, access_grant_id: str) -> CourseAccessGrant | None:
+        with self._session() as session:
             model = session.get(CourseAccessGrantModel, access_grant_id)
             return self._to_entity(model) if model else None
 
     def get_by_payment_intent(self, payment_intent_id: str) -> CourseAccessGrant | None:
-        with self._session_factory() as session:
+        with self._session() as session:
             model = session.scalar(
                 select(CourseAccessGrantModel).where(
                     CourseAccessGrantModel.payment_intent_id == payment_intent_id
@@ -37,7 +49,7 @@ class SqlAlchemyCourseAccessGrantRepository:
         course_id: str,
         student_id: str,
     ) -> CourseAccessGrant | None:
-        with self._session_factory() as session:
+        with self._session() as session:
             model = session.scalar(
                 select(CourseAccessGrantModel).where(
                     and_(
@@ -51,7 +63,7 @@ class SqlAlchemyCourseAccessGrantRepository:
     def exists_active_by_course_and_student(
         self, course_id: str, student_id: str
     ) -> bool:
-        with self._session_factory() as session:
+        with self._session() as session:
             found = session.scalar(
                 select(CourseAccessGrantModel.access_grant_id).where(
                     and_(
@@ -64,7 +76,7 @@ class SqlAlchemyCourseAccessGrantRepository:
             return found is not None
 
     def save(self, access_grant: CourseAccessGrant) -> None:
-        with self._session_factory() as session:
+        with self._session() as session:
             model = session.get(CourseAccessGrantModel, access_grant.access_grant_id)
             if model is None:
                 model = CourseAccessGrantModel(
@@ -72,7 +84,8 @@ class SqlAlchemyCourseAccessGrantRepository:
                 )
                 session.add(model)
             self._fill_model(model, access_grant)
-            session.commit()
+            if get_current_session() is None:
+                session.commit()
 
     @staticmethod
     def _fill_model(model: CourseAccessGrantModel, grant: CourseAccessGrant) -> None:

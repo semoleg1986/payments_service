@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -14,6 +16,7 @@ from src.domain.payments.payment_intent.value_objects import (
 from src.domain.shared.entity import EntityMeta
 from src.domain.shared.statuses import PaymentStatus
 from src.infrastructure.db.sqlalchemy.models import PaymentIntentModel
+from src.infrastructure.db.sqlalchemy.session_context import get_current_session
 
 
 class SqlAlchemyPaymentIntentRepository:
@@ -22,8 +25,17 @@ class SqlAlchemyPaymentIntentRepository:
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def get(self, payment_intent_id: str) -> PaymentIntent | None:
+    @contextmanager
+    def _session(self) -> Session:
+        current = get_current_session()
+        if current is not None:
+            yield current
+            return
         with self._session_factory() as session:
+            yield session
+
+    def get(self, payment_intent_id: str) -> PaymentIntent | None:
+        with self._session() as session:
             model = session.get(PaymentIntentModel, payment_intent_id)
             return self._to_entity(model) if model else None
 
@@ -32,7 +44,7 @@ class SqlAlchemyPaymentIntentRepository:
         parent_id: str,
         idempotency_key: str,
     ) -> PaymentIntent | None:
-        with self._session_factory() as session:
+        with self._session() as session:
             model = session.scalar(
                 select(PaymentIntentModel).where(
                     and_(
@@ -44,7 +56,7 @@ class SqlAlchemyPaymentIntentRepository:
             return self._to_entity(model) if model else None
 
     def list_by_parent(self, parent_id: str) -> list[PaymentIntent]:
-        with self._session_factory() as session:
+        with self._session() as session:
             models = session.scalars(
                 select(PaymentIntentModel).where(
                     PaymentIntentModel.parent_id == parent_id
@@ -53,13 +65,14 @@ class SqlAlchemyPaymentIntentRepository:
             return [self._to_entity(item) for item in models]
 
     def save(self, intent: PaymentIntent) -> None:
-        with self._session_factory() as session:
+        with self._session() as session:
             model = session.get(PaymentIntentModel, intent.payment_intent_id)
             if model is None:
                 model = PaymentIntentModel(payment_intent_id=intent.payment_intent_id)
                 session.add(model)
             self._fill_model(model, intent)
-            session.commit()
+            if get_current_session() is None:
+                session.commit()
 
     @staticmethod
     def _fill_model(model: PaymentIntentModel, intent: PaymentIntent) -> None:

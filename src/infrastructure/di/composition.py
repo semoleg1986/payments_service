@@ -16,6 +16,7 @@ from src.infrastructure.db.sqlalchemy.payment_intent_repository_sqlalchemy impor
     SqlAlchemyPaymentIntentRepository,
 )
 from src.infrastructure.db.sqlalchemy.session import build_engine, build_session_factory
+from src.infrastructure.db.sqlalchemy.uow import SqlAlchemyUnitOfWork
 from src.infrastructure.integrations.in_memory.attribution_discount import (
     InMemoryAttributionDiscountPort,
 )
@@ -59,6 +60,7 @@ def build_runtime() -> RuntimeContainer:
     if settings.use_inmemory:
         payment_repo = InMemoryPaymentIntentRepository()
         access_repo = InMemoryCourseAccessGrantRepository()
+        uow = InMemoryUnitOfWork()
     else:
         from src.infrastructure.db.sqlalchemy import models as _models  # noqa: F401
 
@@ -68,6 +70,7 @@ def build_runtime() -> RuntimeContainer:
         session_factory = build_session_factory(engine)
         payment_repo = SqlAlchemyPaymentIntentRepository(session_factory)
         access_repo = SqlAlchemyCourseAccessGrantRepository(session_factory)
+        uow = SqlAlchemyUnitOfWork(session_factory)
 
     facade = PaymentApplicationFacade(
         payment_repo=payment_repo,
@@ -77,7 +80,7 @@ def build_runtime() -> RuntimeContainer:
         attribution=InMemoryAttributionDiscountPort(),
         id_generator=UuidGenerator(),
         clock=UtcClock(),
-        uow=InMemoryUnitOfWork(),
+        uow=uow,
     )
     return RuntimeContainer(
         settings=settings,
