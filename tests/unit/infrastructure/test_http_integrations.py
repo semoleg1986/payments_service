@@ -6,6 +6,9 @@ from urllib.error import HTTPError
 import pytest
 
 from src.domain.errors import InvariantViolationError
+from src.infrastructure.integrations.http.attribution_discount import (
+    HttpAttributionDiscountPort,
+)
 from src.infrastructure.integrations.http.course_catalog import HttpCourseCatalogPort
 from src.infrastructure.integrations.http.user_relations import HttpUserRelationsPort
 
@@ -128,3 +131,79 @@ def test_http_user_relations_raises_on_upstream_error(
     with pytest.raises(InvariantViolationError):
         adapter.is_parent_of_student("p1", "s1")
 
+
+def test_http_attribution_discount_returns_zero_without_token() -> None:
+    adapter = HttpAttributionDiscountPort(
+        base_url="http://attr-service:8000",
+        service_token="token",
+        timeout_seconds=2.0,
+    )
+    result = adapter.resolve_discount(
+        attribution_token=None,
+        course_id="course-1",
+        parent_id="parent-1",
+    )
+    assert result.kind == "fixed"
+    assert result.value == 0.0
+
+
+def test_http_attribution_discount_parses_valid_discount(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fake_urlopen(request, timeout: float = 2.0):  # noqa: ANN001
+        return _FakeResponse(
+            {
+                "valid": True,
+                "discount_type": "percent",
+                "discount_value": 15,
+                "discount": {"amount": 15, "currency": "USD"},
+            }
+        )
+
+    monkeypatch.setattr(
+        "src.infrastructure.integrations.http.attribution_discount.urlopen",
+        _fake_urlopen,
+    )
+    adapter = HttpAttributionDiscountPort(
+        base_url="http://attr-service:8000",
+        service_token="token",
+        timeout_seconds=2.0,
+    )
+
+    result = adapter.resolve_discount(
+        attribution_token="promo-15",
+        course_id="course-1",
+        parent_id="parent-1",
+    )
+    assert result.kind == "percent"
+    assert result.value == 15.0
+
+
+def test_http_attribution_discount_returns_zero_for_invalid_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fake_urlopen(request, timeout: float = 2.0):  # noqa: ANN001
+        return _FakeResponse(
+            {
+                "valid": False,
+                "discount": {"amount": 0, "currency": "USD"},
+            }
+        )
+
+    monkeypatch.setattr(
+        "src.infrastructure.integrations.http.attribution_discount.urlopen",
+        _fake_urlopen,
+    )
+    adapter = HttpAttributionDiscountPort(
+        base_url="http://attr-service:8000",
+        service_token="token",
+        timeout_seconds=2.0,
+    )
+
+    result = adapter.resolve_discount(
+        attribution_token="bad-token",
+        course_id="course-1",
+        parent_id="parent-1",
+    )
+    assert result.kind == "fixed"
+    assert result.value == 0.0

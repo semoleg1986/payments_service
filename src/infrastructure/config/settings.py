@@ -29,6 +29,9 @@ class Settings:
     users_service_base_url: str
     users_service_token: str
     users_service_timeout_seconds: float
+    attr_service_base_url: str
+    attr_service_token: str
+    attr_service_timeout_seconds: float
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -72,5 +75,14 @@ class Settings:
             ),
             users_service_timeout_seconds=float(
                 os.getenv("PAYMENTS_USERS_SERVICE_TIMEOUT_SECONDS", "2")
+            ),
+            attr_service_base_url=os.getenv(
+                "PAYMENTS_ATTR_SERVICE_BASE_URL", "http://localhost:8003"
+            ),
+            attr_service_token=os.getenv(
+                "PAYMENTS_ATTR_SERVICE_TOKEN", "dev-service-token"
+            ),
+            attr_service_timeout_seconds=float(
+                os.getenv("PAYMENTS_ATTR_SERVICE_TIMEOUT_SECONDS", "2")
             ),
         )
