@@ -40,6 +40,7 @@ def test_full_flow_create_approve_and_internal_access_check() -> None:
         },
     )
     assert create_resp.status_code == 201
+    assert create_resp.headers.get("X-Request-ID")
     payment_id = create_resp.json()["payment_intent_id"]
 
     approve_resp = client.post(
@@ -56,3 +57,22 @@ def test_full_flow_create_approve_and_internal_access_check() -> None:
     )
     assert internal_resp.status_code == 200
     assert internal_resp.json()["has_access"] is True
+
+
+def test_request_id_is_returned_in_error_response() -> None:
+    wiring._runtime = None  # type: ignore[attr-defined]
+    app = create_app()
+    app.dependency_overrides[get_access_token_verifier] = lambda: _FakeVerifier()
+    client = TestClient(app)
+
+    resp = client.post(
+        "/v1/parent/payments/intents",
+        headers={
+            **_headers("parent-token"),
+            "X-Request-ID": "req-fixed-001",
+        },
+        json={"parent_id": "parent-1"},
+    )
+    assert resp.status_code == 422
+    assert resp.headers.get("X-Request-ID") == "req-fixed-001"
+    assert resp.json().get("request_id") == "req-fixed-001"

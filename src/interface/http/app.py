@@ -6,6 +6,10 @@ from fastapi import FastAPI
 
 from src.interface.http.errors import install_error_handlers
 from src.interface.http.health import router as health_router
+from src.interface.http.observability import (
+    configure_http_logging,
+    install_observability,
+)
 from src.interface.http.v1.admin.router import router as admin_router
 from src.interface.http.v1.internal.router import router as internal_router
 from src.interface.http.v1.parent.router import router as parent_router
@@ -14,7 +18,9 @@ from src.interface.http.v1.parent.router import router as parent_router
 def create_app() -> FastAPI:
     """Создает и настраивает FastAPI app."""
 
+    configure_http_logging()
     app = FastAPI(title="payments_service", version="0.1.0")
+    install_observability(app)
     install_error_handlers(app)
     app.include_router(health_router)
     app.include_router(parent_router)

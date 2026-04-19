@@ -16,6 +16,10 @@ from src.interface.http.problem_types import (
 )
 
 
+def _request_id(request: Request) -> str | None:
+    return getattr(request.state, "request_id", None)
+
+
 def install_error_handlers(app: FastAPI) -> None:
     """Регистрирует обработчики исключений."""
 
@@ -32,6 +36,7 @@ def install_error_handlers(app: FastAPI) -> None:
                 "status": 422,
                 "detail": str(exc),
                 "instance": str(request.url.path),
+                "request_id": _request_id(request),
             },
         )
 
@@ -48,6 +53,7 @@ def install_error_handlers(app: FastAPI) -> None:
                 "status": 403,
                 "detail": str(exc),
                 "instance": str(request.url.path),
+                "request_id": _request_id(request),
             },
         )
 
@@ -64,6 +70,7 @@ def install_error_handlers(app: FastAPI) -> None:
                 "status": 404,
                 "detail": str(exc),
                 "instance": str(request.url.path),
+                "request_id": _request_id(request),
             },
         )
 
@@ -80,6 +87,7 @@ def install_error_handlers(app: FastAPI) -> None:
                 "status": 400,
                 "detail": str(exc),
                 "instance": str(request.url.path),
+                "request_id": _request_id(request),
             },
         )
 
@@ -93,5 +101,6 @@ def install_error_handlers(app: FastAPI) -> None:
                 "status": 500,
                 "detail": str(exc),
                 "instance": str(request.url.path),
+                "request_id": _request_id(request),
             },
         )
