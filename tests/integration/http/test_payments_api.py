@@ -76,3 +76,15 @@ def test_request_id_is_returned_in_error_response() -> None:
     assert resp.status_code == 422
     assert resp.headers.get("X-Request-ID") == "req-fixed-001"
     assert resp.json().get("request_id") == "req-fixed-001"
+
+
+def test_metrics_endpoint_exposes_prometheus_metrics() -> None:
+    wiring._runtime = None  # type: ignore[attr-defined]
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert "http_requests_total" in response.text
+    assert "http_request_duration_seconds" in response.text
+    assert "http_errors_total" in response.text
