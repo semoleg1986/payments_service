@@ -12,6 +12,7 @@ from src.application.contracts import (
     ListPaymentsByParentQuery,
 )
 from src.interface.http.common.actor import HttpActor, get_http_actor
+from src.interface.http.observability import increment_counter
 from src.interface.http.v1.schemas.payment import (
     CreatePaymentIntentRequest,
     PaymentIntentResponse,
@@ -40,6 +41,11 @@ def create_payment_intent(
             actor_id=actor.actor_id,
             actor_roles=actor.roles,
         )
+    )
+    increment_counter(
+        "payment_intents_created_total",
+        "Total created payment intents.",
+        result="success",
     )
     return PaymentIntentResponse.model_validate(result)
 

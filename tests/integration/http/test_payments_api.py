@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from src.interface.http import wiring
 from src.interface.http.app import create_app
+from src.interface.http.observability import reset_metrics
 from src.interface.http.wiring import get_access_token_verifier
 
 
@@ -24,6 +25,7 @@ def _headers(access_token: str) -> dict[str, str]:
 
 def test_full_flow_create_approve_and_internal_access_check() -> None:
     wiring._runtime = None  # type: ignore[attr-defined]
+    reset_metrics()
     app = create_app()
     app.dependency_overrides[get_access_token_verifier] = lambda: _FakeVerifier()
     client = TestClient(app)
@@ -58,9 +60,22 @@ def test_full_flow_create_approve_and_internal_access_check() -> None:
     assert internal_resp.status_code == 200
     assert internal_resp.json()["has_access"] is True
 
+    metrics_resp = client.get("/metrics")
+    assert metrics_resp.status_code == 200
+    assert 'payment_intents_created_total{result="success"} 1' in metrics_resp.text
+    assert (
+        'payment_intents_approved_total{access_status="active",result="success"} 1'
+        in metrics_resp.text
+    )
+    assert (
+        'payment_access_checks_total{access_status="active",result="granted"} 1'
+        in metrics_resp.text
+    )
+
 
 def test_request_id_is_returned_in_error_response() -> None:
     wiring._runtime = None  # type: ignore[attr-defined]
+    reset_metrics()
     app = create_app()
     app.dependency_overrides[get_access_token_verifier] = lambda: _FakeVerifier()
     client = TestClient(app)
@@ -80,6 +95,7 @@ def test_request_id_is_returned_in_error_response() -> None:
 
 def test_metrics_endpoint_exposes_prometheus_metrics() -> None:
     wiring._runtime = None  # type: ignore[attr-defined]
+    reset_metrics()
     app = create_app()
     client = TestClient(app)
 

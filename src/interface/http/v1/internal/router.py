@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 
 from src.application.contracts import ApplicationFacade
 from src.interface.http.common.internal_auth import require_service_token
+from src.interface.http.observability import increment_counter
 from src.interface.http.v1.schemas.access import AccessCheckResponse
 from src.interface.http.wiring import get_facade
 
@@ -28,4 +29,10 @@ def check_course_access(
     """Проверяет доступ ученика к курсу."""
 
     result = facade.check_course_access(course_id=course_id, student_id=student_id)
+    increment_counter(
+        "payment_access_checks_total",
+        "Total internal course access checks.",
+        result="granted" if result.has_access else "denied",
+        access_status=result.status or "none",
+    )
     return AccessCheckResponse.model_validate(result)

@@ -10,6 +10,7 @@ from src.application.contracts import (
     RejectPaymentIntentCommand,
 )
 from src.interface.http.common.actor import HttpActor, get_http_actor
+from src.interface.http.observability import increment_counter
 from src.interface.http.v1.schemas.access import CourseAccessGrantResponse
 from src.interface.http.v1.schemas.payment import (
     ApprovePaymentIntentRequest,
@@ -40,6 +41,12 @@ def approve_payment_intent(
             admin_roles=actor.roles,
             access_grant_id=body.access_grant_id or "",
         )
+    )
+    increment_counter(
+        "payment_intents_approved_total",
+        "Total approved payment intents.",
+        result="success",
+        access_status=result.status,
     )
     return CourseAccessGrantResponse.model_validate(result)
 
