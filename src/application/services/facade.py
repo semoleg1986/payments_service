@@ -20,6 +20,7 @@ from src.application.contracts.ports import (
     AttributionDiscountPort,
     Clock,
     CourseAccessGrantRepositoryPort,
+    CourseAccessSyncPort,
     CourseCatalogPort,
     IdGenerator,
     PaymentIntentRepositoryPort,
@@ -61,6 +62,7 @@ class PaymentApplicationFacade:
     id_generator: IdGenerator
     clock: Clock
     uow: UnitOfWork
+    course_access_sync: CourseAccessSyncPort | None = None
 
     def create_payment_intent(
         self, command: CreatePaymentIntentCommand
@@ -147,6 +149,7 @@ class PaymentApplicationFacade:
             )
 
         if existing_grant is not None:
+            self._sync_course_access_granted(existing_grant)
             return self._to_access_view(existing_grant)
 
         ensure_no_other_active_access(
@@ -178,6 +181,7 @@ class PaymentApplicationFacade:
             self.payment_repo.save(intent)
             self.access_repo.save(grant)
             self.uow.commit()
+        self._sync_course_access_granted(grant)
         return self._to_access_view(grant)
 
     def reject_payment_intent(
@@ -309,4 +313,14 @@ class PaymentApplicationFacade:
             created_at=grant.meta.created_at,
             updated_at=grant.meta.updated_at,
             version=grant.meta.version,
+        )
+
+    def _sync_course_access_granted(self, grant: CourseAccessGrant) -> None:
+        if self.course_access_sync is None:
+            return
+        self.course_access_sync.sync_course_access_granted(
+            event_id=f"{grant.access_grant_id}:granted",
+            course_id=grant.subject.course_id,
+            student_id=grant.subject.student_id,
+            granted_status="approved",
         )

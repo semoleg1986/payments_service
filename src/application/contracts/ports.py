@@ -126,6 +126,20 @@ class AttributionDiscountPort(Protocol):
         """Возвращает скидку для расчета final_price."""
 
 
+class CourseAccessSyncPort(Protocol):
+    """Порт синхронизации access grant в course_service."""
+
+    def sync_course_access_granted(
+        self,
+        *,
+        event_id: str,
+        course_id: str,
+        student_id: str,
+        granted_status: str,
+    ) -> None:
+        """Отправляет событие course.access.granted в course_service."""
+
+
 class AccessTokenVerifier(Protocol):
     """Порт верификатора access token."""
 

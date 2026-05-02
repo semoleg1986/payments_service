@@ -17,14 +17,20 @@ from src.infrastructure.db.sqlalchemy.payment_intent_repository_sqlalchemy impor
 )
 from src.infrastructure.db.sqlalchemy.session import build_engine, build_session_factory
 from src.infrastructure.db.sqlalchemy.uow import SqlAlchemyUnitOfWork
-from src.infrastructure.integrations.in_memory.attribution_discount import (
-    InMemoryAttributionDiscountPort,
-)
-from src.infrastructure.integrations.http.course_catalog import HttpCourseCatalogPort
 from src.infrastructure.integrations.http.attribution_discount import (
     HttpAttributionDiscountPort,
 )
+from src.infrastructure.integrations.http.course_access_sync import (
+    HttpCourseAccessSyncPort,
+)
+from src.infrastructure.integrations.http.course_catalog import HttpCourseCatalogPort
 from src.infrastructure.integrations.http.user_relations import HttpUserRelationsPort
+from src.infrastructure.integrations.in_memory.attribution_discount import (
+    InMemoryAttributionDiscountPort,
+)
+from src.infrastructure.integrations.in_memory.course_access_sync import (
+    InMemoryCourseAccessSyncPort,
+)
 from src.infrastructure.integrations.in_memory.course_catalog import (
     InMemoryCourseCatalogPort,
 )
@@ -81,6 +87,7 @@ def build_runtime() -> RuntimeContainer:
         course_catalog = InMemoryCourseCatalogPort()
         user_relations = InMemoryUserRelationsPort()
         attribution = InMemoryAttributionDiscountPort()
+        course_access_sync = InMemoryCourseAccessSyncPort()
     else:
         course_catalog = HttpCourseCatalogPort(
             base_url=settings.course_service_base_url,
@@ -97,6 +104,11 @@ def build_runtime() -> RuntimeContainer:
             service_token=settings.attr_service_token,
             timeout_seconds=settings.attr_service_timeout_seconds,
         )
+        course_access_sync = HttpCourseAccessSyncPort(
+            base_url=settings.course_service_base_url,
+            service_token=settings.course_service_token,
+            timeout_seconds=settings.course_service_timeout_seconds,
+        )
 
     facade = PaymentApplicationFacade(
         payment_repo=payment_repo,
@@ -107,6 +119,7 @@ def build_runtime() -> RuntimeContainer:
         id_generator=UuidGenerator(),
         clock=UtcClock(),
         uow=uow,
+        course_access_sync=course_access_sync,
     )
     return RuntimeContainer(
         settings=settings,

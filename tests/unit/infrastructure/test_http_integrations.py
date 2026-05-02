@@ -9,6 +9,9 @@ from src.domain.errors import InvariantViolationError
 from src.infrastructure.integrations.http.attribution_discount import (
     HttpAttributionDiscountPort,
 )
+from src.infrastructure.integrations.http.course_access_sync import (
+    HttpCourseAccessSyncPort,
+)
 from src.infrastructure.integrations.http.course_catalog import HttpCourseCatalogPort
 from src.infrastructure.integrations.http.user_relations import HttpUserRelationsPort
 
@@ -207,3 +210,44 @@ def test_http_attribution_discount_returns_zero_for_invalid_token(
     )
     assert result.kind == "fixed"
     assert result.value == 0.0
+
+
+def test_http_course_access_sync_posts_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_urlopen(request, timeout: float = 2.0):  # noqa: ANN001
+        captured["url"] = request.full_url
+        captured["headers"] = dict(request.header_items())
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse({})
+
+    monkeypatch.setattr(
+        "src.infrastructure.integrations.http.course_access_sync.urlopen",
+        _fake_urlopen,
+    )
+    adapter = HttpCourseAccessSyncPort(
+        base_url="http://course-service:8001",
+        service_token="sync-token",
+        timeout_seconds=2.0,
+    )
+
+    adapter.sync_course_access_granted(
+        event_id="evt-1",
+        course_id="course-1",
+        student_id="student-1",
+        granted_status="approved",
+    )
+
+    assert (
+        captured["url"]
+        == "http://course-service:8001/internal/v1/access/events/course-access-granted"
+    )
+    assert captured["headers"]["X-service-token"] == "sync-token"
+    assert captured["body"] == {
+        "event_id": "evt-1",
+        "course_id": "course-1",
+        "student_id": "student-1",
+        "granted_status": "approved",
+    }

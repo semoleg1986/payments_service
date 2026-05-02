@@ -72,6 +72,9 @@ def test_full_flow_create_approve_and_internal_access_check() -> None:
         in metrics_resp.text
     )
 
+    runtime = wiring.get_runtime()
+    assert runtime.facade.course_access_sync is not None
+
 
 def test_request_id_is_returned_in_error_response() -> None:
     wiring._runtime = None  # type: ignore[attr-defined]
