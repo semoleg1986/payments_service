@@ -6,6 +6,7 @@ from urllib.error import HTTPError
 import pytest
 
 from src.domain.errors import InvariantViolationError
+from src.interface.http import observability
 from src.infrastructure.integrations.http.attribution_discount import (
     HttpAttributionDiscountPort,
 )
@@ -251,3 +252,88 @@ def test_http_course_access_sync_posts_event(
         "student_id": "student-1",
         "granted_status": "approved",
     }
+
+
+def test_http_adapters_forward_correlation_id_when_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, dict[str, str]] = {}
+
+    def _fake_urlopen(request, timeout: float = 2.0):  # noqa: ANN001
+        captured[request.full_url] = dict(request.header_items())
+        if request.full_url.endswith("/payment-snapshot"):
+            return _FakeResponse(
+                {
+                    "course_id": "course-42",
+                    "price": 1990,
+                    "currency": "USD",
+                    "access_ttl_days": 60,
+                }
+            )
+        if "/parent-students/" in request.full_url:
+            return _FakeResponse({"has_relation": True})
+        if request.full_url.endswith("/discount/resolve"):
+            return _FakeResponse(
+                {
+                    "valid": False,
+                    "discount": {"amount": 0, "currency": "USD"},
+                }
+            )
+        return _FakeResponse({})
+
+    monkeypatch.setattr(
+        "src.infrastructure.integrations.http.course_catalog.urlopen",
+        _fake_urlopen,
+    )
+    monkeypatch.setattr(
+        "src.infrastructure.integrations.http.user_relations.urlopen",
+        _fake_urlopen,
+    )
+    monkeypatch.setattr(
+        "src.infrastructure.integrations.http.attribution_discount.urlopen",
+        _fake_urlopen,
+    )
+    monkeypatch.setattr(
+        "src.infrastructure.integrations.http.course_access_sync.urlopen",
+        _fake_urlopen,
+    )
+
+    request_token = observability._CURRENT_REQUEST_ID.set("req-001")
+    correlation_token = observability._CURRENT_CORRELATION_ID.set("corr-001")
+    try:
+        HttpCourseCatalogPort(
+            base_url="http://course-service:8001",
+            service_token="token",
+            timeout_seconds=2.0,
+        ).get_course("course-42")
+        HttpUserRelationsPort(
+            base_url="http://users-service:8002",
+            service_token="token",
+            timeout_seconds=2.0,
+        ).is_parent_of_student("p1", "s1")
+        HttpAttributionDiscountPort(
+            base_url="http://attr-service:8000",
+            service_token="token",
+            timeout_seconds=2.0,
+        ).resolve_discount(
+            attribution_token="promo-15",
+            course_id="course-1",
+            parent_id="parent-1",
+        )
+        HttpCourseAccessSyncPort(
+            base_url="http://course-service:8001",
+            service_token="sync-token",
+            timeout_seconds=2.0,
+        ).sync_course_access_granted(
+            event_id="evt-1",
+            course_id="course-1",
+            student_id="student-1",
+            granted_status="approved",
+        )
+    finally:
+        observability._CURRENT_REQUEST_ID.reset(request_token)
+        observability._CURRENT_CORRELATION_ID.reset(correlation_token)
+
+    assert observability.current_correlation_id() is None
+    for headers in captured.values():
+        assert headers["X-correlation-id"] == "corr-001"

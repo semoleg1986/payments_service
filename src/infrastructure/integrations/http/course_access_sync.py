@@ -7,6 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from src.domain.errors import InvariantViolationError
+from src.interface.http.observability import current_correlation_id
 
 
 class HttpCourseAccessSyncPort:
@@ -46,6 +47,11 @@ class HttpCourseAccessSyncPort:
             headers={
                 "Content-Type": "application/json",
                 "X-Service-Token": self._service_token,
+                **(
+                    {"X-Correlation-ID": current_correlation_id()}
+                    if current_correlation_id() is not None
+                    else {}
+                ),
             },
         )
         try:

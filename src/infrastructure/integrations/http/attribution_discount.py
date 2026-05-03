@@ -8,6 +8,7 @@ from urllib.request import Request, urlopen
 
 from src.application.contracts.ports import DiscountSnapshot
 from src.domain.errors import InvariantViolationError
+from src.interface.http.observability import current_correlation_id
 
 
 class HttpAttributionDiscountPort:
@@ -45,6 +46,11 @@ class HttpAttributionDiscountPort:
             headers={
                 "X-Service-Token": self._service_token,
                 "Content-Type": "application/json",
+                **(
+                    {"X-Correlation-ID": current_correlation_id()}
+                    if current_correlation_id() is not None
+                    else {}
+                ),
             },
             method="POST",
         )

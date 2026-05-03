@@ -9,6 +9,7 @@ from urllib.request import Request, urlopen
 
 from src.application.contracts.ports import CourseSnapshot
 from src.domain.errors import InvariantViolationError
+from src.interface.http.observability import current_correlation_id
 
 
 class HttpCourseCatalogPort:
@@ -30,7 +31,14 @@ class HttpCourseCatalogPort:
         )
         request = Request(
             url,
-            headers={"X-Service-Token": self._service_token},
+            headers={
+                "X-Service-Token": self._service_token,
+                **(
+                    {"X-Correlation-ID": current_correlation_id()}
+                    if current_correlation_id() is not None
+                    else {}
+                ),
+            },
             method="GET",
         )
         try:
@@ -78,4 +86,3 @@ class HttpCourseCatalogPort:
             currency=currency,
             access_ttl_days=access_ttl_days,
         )
-

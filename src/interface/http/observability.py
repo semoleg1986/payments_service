@@ -6,6 +6,7 @@ import json
 import logging
 import time
 from collections import defaultdict
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from threading import Lock
 from uuid import uuid4
@@ -25,6 +26,12 @@ _CUSTOM_COUNTER_DOCS: dict[str, str] = {}
 _CUSTOM_COUNTER_LABELS: dict[str, tuple[str, ...]] = {}
 _CUSTOM_COUNTER_VALUES: dict[str, dict[tuple[str, ...], int]] = defaultdict(
     lambda: defaultdict(int)
+)
+_CURRENT_REQUEST_ID: ContextVar[str | None] = ContextVar(
+    "payments_request_id", default=None
+)
+_CURRENT_CORRELATION_ID: ContextVar[str | None] = ContextVar(
+    "payments_correlation_id", default=None
 )
 
 
@@ -67,6 +74,18 @@ def reset_metrics() -> None:
         _CUSTOM_COUNTER_VALUES.clear()
 
 
+def current_request_id() -> str | None:
+    """Возвращает request_id текущего HTTP-контекста."""
+
+    return _CURRENT_REQUEST_ID.get()
+
+
+def current_correlation_id() -> str | None:
+    """Возвращает correlation_id текущего HTTP-контекста."""
+
+    return _CURRENT_CORRELATION_ID.get()
+
+
 class _StructuredHttpLogMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self,
@@ -74,7 +93,11 @@ class _StructuredHttpLogMiddleware(BaseHTTPMiddleware):
         call_next: RequestResponseEndpoint,
     ) -> Response:
         request_id = request.headers.get("X-Request-ID") or uuid4().hex
+        correlation_id = request.headers.get("X-Correlation-ID") or request_id
         request.state.request_id = request_id
+        request.state.correlation_id = correlation_id
+        request_token = _CURRENT_REQUEST_ID.set(request_id)
+        correlation_token = _CURRENT_CORRELATION_ID.set(correlation_id)
         started_at = time.perf_counter()
         status_code = 500
         path = request.url.path
@@ -85,6 +108,7 @@ class _StructuredHttpLogMiddleware(BaseHTTPMiddleware):
             route = request.scope.get("route")
             path = getattr(route, "path", request.url.path)
             response.headers["X-Request-ID"] = request_id
+            response.headers["X-Correlation-ID"] = correlation_id
             return response
         finally:
             duration_seconds = time.perf_counter() - started_at
@@ -105,6 +129,7 @@ class _StructuredHttpLogMiddleware(BaseHTTPMiddleware):
                 "service": _SERVICE,
                 "event": "http_request",
                 "request_id": request_id,
+                "correlation_id": correlation_id,
                 "method": request.method,
                 "path": path,
                 "query": request.url.query,
@@ -114,6 +139,8 @@ class _StructuredHttpLogMiddleware(BaseHTTPMiddleware):
                 "user_agent": request.headers.get("user-agent"),
             }
             _LOGGER.info(json.dumps(event, ensure_ascii=False))
+            _CURRENT_REQUEST_ID.reset(request_token)
+            _CURRENT_CORRELATION_ID.reset(correlation_token)
 
 
 def install_observability(app: FastAPI) -> None:
