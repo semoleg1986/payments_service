@@ -12,6 +12,9 @@ from src.infrastructure.db.sqlalchemy.base import Base
 from src.infrastructure.db.sqlalchemy.course_access_grant_repository_sqlalchemy import (
     SqlAlchemyCourseAccessGrantRepository,
 )
+from src.infrastructure.db.sqlalchemy.payment_audit_repository_sqlalchemy import (
+    SqlAlchemyPaymentAuditRepository,
+)
 from src.infrastructure.db.sqlalchemy.payment_intent_repository_sqlalchemy import (
     SqlAlchemyPaymentIntentRepository,
 )
@@ -40,6 +43,9 @@ from src.infrastructure.integrations.in_memory.user_relations import (
 from src.infrastructure.persistence.in_memory.course_access_grant_repository import (
     InMemoryCourseAccessGrantRepository,
 )
+from src.infrastructure.persistence.in_memory.payment_audit_repository import (
+    InMemoryPaymentAuditRepository,
+)
 from src.infrastructure.persistence.in_memory.payment_intent_repository import (
     InMemoryPaymentIntentRepository,
 )
@@ -55,6 +61,7 @@ class RuntimeContainer:
     settings: Settings
     facade: PaymentApplicationFacade
     access_token_verifier: AccessTokenVerifier
+    audit_repo: object
 
 
 def build_runtime() -> RuntimeContainer:
@@ -71,6 +78,7 @@ def build_runtime() -> RuntimeContainer:
     if settings.use_inmemory:
         payment_repo = InMemoryPaymentIntentRepository()
         access_repo = InMemoryCourseAccessGrantRepository()
+        audit_repo = InMemoryPaymentAuditRepository()
         uow = InMemoryUnitOfWork()
     else:
         from src.infrastructure.db.sqlalchemy import models as _models  # noqa: F401
@@ -81,6 +89,7 @@ def build_runtime() -> RuntimeContainer:
         session_factory = build_session_factory(engine)
         payment_repo = SqlAlchemyPaymentIntentRepository(session_factory)
         access_repo = SqlAlchemyCourseAccessGrantRepository(session_factory)
+        audit_repo = SqlAlchemyPaymentAuditRepository(session_factory)
         uow = SqlAlchemyUnitOfWork(session_factory)
 
     if settings.integrations_use_inmemory:
@@ -119,10 +128,12 @@ def build_runtime() -> RuntimeContainer:
         id_generator=UuidGenerator(),
         clock=UtcClock(),
         uow=uow,
+        audit_repo=audit_repo,
         course_access_sync=course_access_sync,
     )
     return RuntimeContainer(
         settings=settings,
         facade=facade,
         access_token_verifier=access_token_verifier,
+        audit_repo=audit_repo,
     )

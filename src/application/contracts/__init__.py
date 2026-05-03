@@ -15,6 +15,8 @@ from .facade import (
 from .ports import (
     AccessTokenVerifier,
     AttributionDiscountPort,
+    AuditEvidenceRecord,
+    AuditEvidenceRepositoryPort,
     Clock,
     CourseAccessGrantRepositoryPort,
     CourseAccessSyncPort,
@@ -35,6 +37,8 @@ from .queries import (
 __all__ = [
     "AccessCheckView",
     "AccessTokenVerifier",
+    "AuditEvidenceRecord",
+    "AuditEvidenceRepositoryPort",
     "ApplicationFacade",
     "ApprovePaymentIntentCommand",
     "AttributionDiscountPort",

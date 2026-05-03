@@ -92,3 +92,33 @@ class CourseAccessGrantModel(Base):
         DateTime(timezone=True), nullable=True
     )
     archived_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class PaymentAuditRecordModel(Base):
+    """ORM-модель retained audit evidence для payments_service."""
+
+    __tablename__ = "payment_audit_records"
+
+    audit_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    result: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    actor_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    actor_roles: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    target_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reason_code: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+    request_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+    correlation_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+    payment_intent_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )

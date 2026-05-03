@@ -27,6 +27,8 @@ class ApprovePaymentIntentCommand:
     admin_id: str
     admin_roles: tuple[str, ...]
     access_grant_id: str
+    request_id: str | None = None
+    correlation_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +39,8 @@ class RejectPaymentIntentCommand:
     admin_id: str
     admin_roles: tuple[str, ...]
     reason: str | None = None
+    request_id: str | None = None
+    correlation_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

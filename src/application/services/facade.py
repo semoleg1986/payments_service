@@ -18,6 +18,8 @@ from src.application.contracts.facade import (
 )
 from src.application.contracts.ports import (
     AttributionDiscountPort,
+    AuditEvidenceRecord,
+    AuditEvidenceRepositoryPort,
     Clock,
     CourseAccessGrantRepositoryPort,
     CourseAccessSyncPort,
@@ -62,6 +64,7 @@ class PaymentApplicationFacade:
     id_generator: IdGenerator
     clock: Clock
     uow: UnitOfWork
+    audit_repo: AuditEvidenceRepositoryPort
     course_access_sync: CourseAccessSyncPort | None = None
 
     def create_payment_intent(
@@ -131,7 +134,20 @@ class PaymentApplicationFacade:
     ) -> CourseAccessGrantView:
         """Подтверждает intent и активирует доступ к курсу."""
 
-        ensure_admin_can_decide(command.admin_id, list(command.admin_roles))
+        try:
+            ensure_admin_can_decide(command.admin_id, list(command.admin_roles))
+        except AccessDeniedError as exc:
+            self._append_denied_admin_decision(
+                action="payment_intent.approve",
+                payment_intent_id=command.payment_intent_id,
+                actor_id=command.admin_id,
+                actor_roles=command.admin_roles,
+                reason=str(exc),
+                reason_code="admin_decision_forbidden",
+                request_id=command.request_id,
+                correlation_id=command.correlation_id,
+            )
+            raise
         intent = self.payment_repo.get(command.payment_intent_id)
         if intent is None:
             raise NotFoundError("PaymentIntent не найден.")
@@ -189,7 +205,20 @@ class PaymentApplicationFacade:
     ) -> PaymentIntentView:
         """Отклоняет intent администратором."""
 
-        ensure_admin_can_decide(command.admin_id, list(command.admin_roles))
+        try:
+            ensure_admin_can_decide(command.admin_id, list(command.admin_roles))
+        except AccessDeniedError as exc:
+            self._append_denied_admin_decision(
+                action="payment_intent.reject",
+                payment_intent_id=command.payment_intent_id,
+                actor_id=command.admin_id,
+                actor_roles=command.admin_roles,
+                reason=str(exc),
+                reason_code="admin_decision_forbidden",
+                request_id=command.request_id,
+                correlation_id=command.correlation_id,
+            )
+            raise
         intent = self.payment_repo.get(command.payment_intent_id)
         if intent is None:
             raise NotFoundError("PaymentIntent не найден.")
@@ -314,6 +343,37 @@ class PaymentApplicationFacade:
             updated_at=grant.meta.updated_at,
             version=grant.meta.version,
         )
+
+    def _append_denied_admin_decision(
+        self,
+        *,
+        action: str,
+        payment_intent_id: str,
+        actor_id: str,
+        actor_roles: tuple[str, ...],
+        reason: str,
+        reason_code: str,
+        request_id: str | None,
+        correlation_id: str | None,
+    ) -> None:
+        record = AuditEvidenceRecord(
+            audit_id=self.id_generator.new_id(),
+            action=action,
+            occurred_at=self.clock.now(),
+            result="denied",
+            actor_id=actor_id or None,
+            actor_roles=tuple(actor_roles),
+            target_type="payment_intent",
+            target_id=payment_intent_id or None,
+            reason=reason,
+            reason_code=reason_code,
+            request_id=request_id,
+            correlation_id=correlation_id,
+            payment_intent_id=payment_intent_id or None,
+        )
+        with self.uow:
+            self.audit_repo.append(record)
+            self.uow.commit()
 
     def _sync_course_access_granted(self, grant: CourseAccessGrant) -> None:
         if self.course_access_sync is None:

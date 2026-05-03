@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from src.application.contracts import (
     ApplicationFacade,
@@ -29,6 +29,7 @@ router = APIRouter(prefix="/v1/admin/payments", tags=["admin-payments"])
 def approve_payment_intent(
     payment_intent_id: str,
     body: ApprovePaymentIntentRequest,
+    request: Request,
     actor: HttpActor = Depends(get_http_actor),
     facade: ApplicationFacade = Depends(get_facade),
 ) -> CourseAccessGrantResponse:
@@ -40,6 +41,8 @@ def approve_payment_intent(
             admin_id=actor.actor_id,
             admin_roles=actor.roles,
             access_grant_id=body.access_grant_id or "",
+            request_id=getattr(request.state, "request_id", None),
+            correlation_id=getattr(request.state, "correlation_id", None),
         )
     )
     increment_counter(
@@ -55,6 +58,7 @@ def approve_payment_intent(
 def reject_payment_intent(
     payment_intent_id: str,
     body: RejectPaymentIntentRequest,
+    request: Request,
     actor: HttpActor = Depends(get_http_actor),
     facade: ApplicationFacade = Depends(get_facade),
 ) -> PaymentIntentResponse:
@@ -66,6 +70,8 @@ def reject_payment_intent(
             admin_id=actor.actor_id,
             admin_roles=actor.roles,
             reason=body.reason,
+            request_id=getattr(request.state, "request_id", None),
+            correlation_id=getattr(request.state, "correlation_id", None),
         )
     )
     return PaymentIntentResponse.model_validate(result)

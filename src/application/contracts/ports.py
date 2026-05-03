@@ -9,6 +9,25 @@ from typing import Protocol
 from src.domain.payments import CourseAccessGrant, PaymentIntent
 
 
+@dataclass(frozen=True, slots=True)
+class AuditEvidenceRecord:
+    """Append-only запись retained audit evidence."""
+
+    audit_id: str
+    action: str
+    occurred_at: datetime
+    result: str
+    actor_id: str | None
+    actor_roles: tuple[str, ...]
+    target_type: str
+    target_id: str | None
+    reason: str | None = None
+    reason_code: str | None = None
+    request_id: str | None = None
+    correlation_id: str | None = None
+    payment_intent_id: str | None = None
+
+
 class UnitOfWork(Protocol):
     """Транзакционный порт Unit of Work."""
 
@@ -145,3 +164,10 @@ class AccessTokenVerifier(Protocol):
 
     def decode_access(self, access_token: str) -> dict[str, str | list[str]]:
         """Декодирует access token и возвращает claims."""
+
+
+class AuditEvidenceRepositoryPort(Protocol):
+    """Порт append-only хранения audit evidence."""
+
+    def append(self, record: AuditEvidenceRecord) -> None:
+        """Сохраняет audit evidence запись."""
