@@ -30,6 +30,9 @@ from src.infrastructure.integrations.in_memory.course_catalog import (
 from src.infrastructure.integrations.in_memory.user_relations import (
     InMemoryUserRelationsPort,
 )
+from src.infrastructure.persistence.in_memory.payment_audit_repository import (
+    InMemoryPaymentAuditRepository,
+)
 from src.infrastructure.system.clock import UtcClock
 from src.infrastructure.system.id_generator import UuidGenerator
 
@@ -58,7 +61,8 @@ def test_approve_is_atomic_with_sqlalchemy_uow(tmp_path: Path) -> None:
         attribution=InMemoryAttributionDiscountPort(),
         id_generator=UuidGenerator(),
         clock=UtcClock(),
-        uow=SqlAlchemyUnitOfWork(session_factory),
+        uow_factory=lambda: SqlAlchemyUnitOfWork(session_factory),
+        audit_repo=InMemoryPaymentAuditRepository(),
     )
 
     created = facade_ok.create_payment_intent(
@@ -82,7 +86,8 @@ def test_approve_is_atomic_with_sqlalchemy_uow(tmp_path: Path) -> None:
         attribution=InMemoryAttributionDiscountPort(),
         id_generator=UuidGenerator(),
         clock=UtcClock(),
-        uow=SqlAlchemyUnitOfWork(session_factory),
+        uow_factory=lambda: SqlAlchemyUnitOfWork(session_factory),
+        audit_repo=InMemoryPaymentAuditRepository(),
     )
 
     with pytest.raises(RuntimeError):

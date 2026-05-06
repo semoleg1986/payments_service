@@ -27,6 +27,7 @@ from src.application.contracts.ports import (
     IdGenerator,
     PaymentIntentRepositoryPort,
     UnitOfWork,
+    UnitOfWorkFactory,
     UserRelationsPort,
 )
 from src.application.contracts.queries import (
@@ -63,7 +64,7 @@ class PaymentApplicationFacade:
     attribution: AttributionDiscountPort
     id_generator: IdGenerator
     clock: Clock
-    uow: UnitOfWork
+    uow_factory: UnitOfWorkFactory
     audit_repo: AuditEvidenceRepositoryPort
     course_access_sync: CourseAccessSyncPort | None = None
 
@@ -124,9 +125,9 @@ class PaymentApplicationFacade:
             created_by=command.actor_id,
         )
 
-        with self.uow:
+        with self.uow_factory() as uow:
             self.payment_repo.save(intent)
-            self.uow.commit()
+            uow.commit()
         return self._to_payment_view(intent)
 
     def approve_payment_intent(
@@ -193,10 +194,10 @@ class PaymentApplicationFacade:
             expires_at=expires_at,
         )
 
-        with self.uow:
+        with self.uow_factory() as uow:
             self.payment_repo.save(intent)
             self.access_repo.save(grant)
-            self.uow.commit()
+            uow.commit()
         self._sync_course_access_granted(grant)
         return self._to_access_view(grant)
 
@@ -228,9 +229,9 @@ class PaymentApplicationFacade:
             rejected_at=self.clock.now(),
             reason=command.reason,
         )
-        with self.uow:
+        with self.uow_factory() as uow:
             self.payment_repo.save(intent)
-            self.uow.commit()
+            uow.commit()
         return self._to_payment_view(intent)
 
     def cancel_payment_intent(
@@ -244,9 +245,9 @@ class PaymentApplicationFacade:
             raise NotFoundError("PaymentIntent не найден.")
 
         intent.cancel(actor_id=command.actor_id, cancelled_at=self.clock.now())
-        with self.uow:
+        with self.uow_factory() as uow:
             self.payment_repo.save(intent)
-            self.uow.commit()
+            uow.commit()
         return self._to_payment_view(intent)
 
     def get_payment_intent(self, query: GetPaymentIntentQuery) -> PaymentIntentView:
@@ -371,9 +372,9 @@ class PaymentApplicationFacade:
             correlation_id=correlation_id,
             payment_intent_id=payment_intent_id or None,
         )
-        with self.uow:
+        with self.uow_factory() as uow:
             self.audit_repo.append(record)
-            self.uow.commit()
+            uow.commit()
 
     def _sync_course_access_granted(self, grant: CourseAccessGrant) -> None:
         if self.course_access_sync is None:

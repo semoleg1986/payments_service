@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Callable, Protocol
 
 from src.domain.payments import CourseAccessGrant, PaymentIntent
 
@@ -42,6 +42,9 @@ class UnitOfWork(Protocol):
 
     def rollback(self) -> None:
         """Откатывает транзакцию."""
+
+
+UnitOfWorkFactory = Callable[[], UnitOfWork]
 
 
 class Clock(Protocol):

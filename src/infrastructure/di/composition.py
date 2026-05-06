@@ -80,6 +80,7 @@ def build_runtime() -> RuntimeContainer:
         access_repo = InMemoryCourseAccessGrantRepository()
         audit_repo = InMemoryPaymentAuditRepository()
         uow = InMemoryUnitOfWork()
+        uow_factory = lambda: uow
     else:
         from src.infrastructure.db.sqlalchemy import models as _models  # noqa: F401
 
@@ -90,7 +91,7 @@ def build_runtime() -> RuntimeContainer:
         payment_repo = SqlAlchemyPaymentIntentRepository(session_factory)
         access_repo = SqlAlchemyCourseAccessGrantRepository(session_factory)
         audit_repo = SqlAlchemyPaymentAuditRepository(session_factory)
-        uow = SqlAlchemyUnitOfWork(session_factory)
+        uow_factory = lambda: SqlAlchemyUnitOfWork(session_factory)
 
     if settings.integrations_use_inmemory:
         course_catalog = InMemoryCourseCatalogPort()
@@ -127,7 +128,7 @@ def build_runtime() -> RuntimeContainer:
         attribution=attribution,
         id_generator=UuidGenerator(),
         clock=UtcClock(),
-        uow=uow,
+        uow_factory=uow_factory,
         audit_repo=audit_repo,
         course_access_sync=course_access_sync,
     )
