@@ -19,6 +19,12 @@
 
 - Создание intent поддерживает `IdempotencyKey`.
 - Повторный вызов с тем же ключом возвращает существующий intent.
+- `IdempotencyKey` рассматривается в связке `(parent_id, idempotency_key)`, а не как глобальный ключ платформы.
+- `ApprovePaymentIntent` не является strict-idempotent по HTTP-ответу:
+  - повторный `approve` не создает второй `CourseAccessGrant`
+  - но может вернуть ветку `already active` / policy-conflict вместо повторения исходного `2xx`
+- Для пары (`course_id`, `student_id`) действует natural-key защита: повторный approve не должен создавать второй active-доступ.
+- Отсутствие `idempotency_key` на create intent означает, что клиент берет риск повторного создания intent на себя.
 
 ## TTL
 

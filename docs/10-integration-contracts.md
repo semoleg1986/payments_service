@@ -38,4 +38,13 @@
 
 ## Требования К Идемпотентности
 
-- Все команды изменения состояния принимают `idempotency_key` или защищены уникальными доменными ключами.
+- `POST /v1/parent/payments/intents`
+  - поддерживает явный `idempotency_key`
+  - повтор с тем же `(parent_id, idempotency_key)` возвращает существующий intent
+- `POST /v1/admin/payments/{payment_intent_id}/approve`
+  - защищен natural-key инвариантом active-доступа по `(course_id, student_id)`
+  - повтор не должен создавать второй `CourseAccessGrant`
+  - но не гарантирует повторение исходного HTTP-ответа один в один
+- исходящее событие `course.access.granted`
+  - публикуется с детерминированным `event_id`
+  - предназначено для replay-safe потребителя (`course_service`)
