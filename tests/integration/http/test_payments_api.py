@@ -45,6 +45,13 @@ def test_full_flow_create_approve_and_internal_access_check() -> None:
     )
     assert create_resp.status_code == 201
     assert create_resp.headers.get("X-Request-ID")
+    assert create_resp.headers.get("X-Content-Type-Options") == "nosniff"
+    assert create_resp.headers.get("X-Frame-Options") == "DENY"
+    assert create_resp.headers.get("Referrer-Policy") == "no-referrer"
+    assert (
+        create_resp.headers.get("Permissions-Policy")
+        == "camera=(), microphone=(), geolocation=()"
+    )
     payment_id = create_resp.json()["payment_intent_id"]
 
     approve_resp = client.post(
