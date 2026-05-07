@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from src.application.contracts import (
     ApplicationFacade,
@@ -12,6 +12,7 @@ from src.application.contracts import (
     ListPaymentsByParentQuery,
 )
 from src.interface.http.common.actor import HttpActor, get_http_actor
+from src.interface.http.common.rate_limit import enforce_parent_create_rate_limit
 from src.interface.http.observability import increment_counter
 from src.interface.http.v1.schemas.payment import (
     CreatePaymentIntentRequest,
@@ -25,6 +26,8 @@ router = APIRouter(prefix="/v1/parent/payments", tags=["parent-payments"])
 @router.post("/intents", response_model=PaymentIntentResponse, status_code=201)
 def create_payment_intent(
     body: CreatePaymentIntentRequest,
+    request: Request,
+    _: None = Depends(enforce_parent_create_rate_limit),
     actor: HttpActor = Depends(get_http_actor),
     facade: ApplicationFacade = Depends(get_facade),
 ) -> PaymentIntentResponse:

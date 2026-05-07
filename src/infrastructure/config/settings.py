@@ -32,6 +32,10 @@ class Settings:
     attr_service_base_url: str
     attr_service_token: str
     attr_service_timeout_seconds: float
+    parent_payment_create_rate_limit_max: int
+    parent_payment_create_rate_limit_window_seconds: int
+    admin_payment_approve_rate_limit_max: int
+    admin_payment_approve_rate_limit_window_seconds: int
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -84,5 +88,17 @@ class Settings:
             ),
             attr_service_timeout_seconds=float(
                 os.getenv("PAYMENTS_ATTR_SERVICE_TIMEOUT_SECONDS", "2")
+            ),
+            parent_payment_create_rate_limit_max=int(
+                os.getenv("PAYMENTS_RATE_LIMIT_PARENT_CREATE_MAX", "20")
+            ),
+            parent_payment_create_rate_limit_window_seconds=int(
+                os.getenv("PAYMENTS_RATE_LIMIT_PARENT_CREATE_WINDOW_SECONDS", "60")
+            ),
+            admin_payment_approve_rate_limit_max=int(
+                os.getenv("PAYMENTS_RATE_LIMIT_ADMIN_APPROVE_MAX", "30")
+            ),
+            admin_payment_approve_rate_limit_window_seconds=int(
+                os.getenv("PAYMENTS_RATE_LIMIT_ADMIN_APPROVE_WINDOW_SECONDS", "60")
             ),
         )

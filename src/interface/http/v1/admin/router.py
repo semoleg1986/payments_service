@@ -10,6 +10,7 @@ from src.application.contracts import (
     RejectPaymentIntentCommand,
 )
 from src.interface.http.common.actor import HttpActor, get_http_actor
+from src.interface.http.common.rate_limit import enforce_admin_approve_rate_limit
 from src.interface.http.observability import increment_counter
 from src.interface.http.v1.schemas.access import CourseAccessGrantResponse
 from src.interface.http.v1.schemas.payment import (
@@ -30,6 +31,7 @@ def approve_payment_intent(
     payment_intent_id: str,
     body: ApprovePaymentIntentRequest,
     request: Request,
+    _: None = Depends(enforce_admin_approve_rate_limit),
     actor: HttpActor = Depends(get_http_actor),
     facade: ApplicationFacade = Depends(get_facade),
 ) -> CourseAccessGrantResponse:

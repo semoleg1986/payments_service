@@ -6,7 +6,6 @@ from urllib.error import HTTPError
 import pytest
 
 from src.domain.errors import InvariantViolationError
-from src.interface.http import observability
 from src.infrastructure.integrations.http.attribution_discount import (
     HttpAttributionDiscountPort,
 )
@@ -15,6 +14,7 @@ from src.infrastructure.integrations.http.course_access_sync import (
 )
 from src.infrastructure.integrations.http.course_catalog import HttpCourseCatalogPort
 from src.infrastructure.integrations.http.user_relations import HttpUserRelationsPort
+from src.interface.http import observability
 
 
 class _FakeResponse:
