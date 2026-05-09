@@ -29,6 +29,7 @@ class PaymentIntentModel(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     base_amount: Mapped[float] = mapped_column(Float, nullable=False)
     final_amount: Mapped[float] = mapped_column(Float, nullable=False)
+    bonus_amount: Mapped[int] = mapped_column(nullable=False, default=0)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     discount_kind: Mapped[str] = mapped_column(String(16), nullable=False)
     discount_value: Mapped[float] = mapped_column(Float, nullable=False)

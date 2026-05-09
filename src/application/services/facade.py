@@ -20,13 +20,14 @@ from src.application.contracts.ports import (
     AttributionDiscountPort,
     AuditEvidenceRecord,
     AuditEvidenceRepositoryPort,
+    BonusQuoteSnapshot,
+    BonusWalletPort,
     Clock,
     CourseAccessGrantRepositoryPort,
     CourseAccessSyncPort,
     CourseCatalogPort,
     IdGenerator,
     PaymentIntentRepositoryPort,
-    UnitOfWork,
     UnitOfWorkFactory,
     UserRelationsPort,
 )
@@ -62,6 +63,7 @@ class PaymentApplicationFacade:
     course_catalog: CourseCatalogPort
     user_relations: UserRelationsPort
     attribution: AttributionDiscountPort
+    bonus_wallet: BonusWalletPort
     id_generator: IdGenerator
     clock: Clock
     uow_factory: UnitOfWorkFactory
@@ -101,20 +103,29 @@ class PaymentApplicationFacade:
         if course is None:
             raise NotFoundError("Курс не найден.")
 
+        effective_payment_intent_id = (
+            command.payment_intent_id or self.id_generator.new_id()
+        )
+
         discount_snapshot = self.attribution.resolve_discount(
             attribution_token=command.attribution_token,
             course_id=command.course_id,
             parent_id=command.parent_id,
         )
+        bonus_snapshot = self._resolve_bonus_quote(
+            command=command,
+            payment_intent_id=effective_payment_intent_id,
+        )
 
         now = self.clock.now()
         intent = PaymentIntent.create(
-            payment_intent_id=command.payment_intent_id or self.id_generator.new_id(),
+            payment_intent_id=effective_payment_intent_id,
             context=PaymentContext(
                 parent_id=command.parent_id,
                 student_id=command.student_id,
                 course_id=command.course_id,
                 attribution_token=command.attribution_token,
+                bonus_amount=bonus_snapshot.allowed_amount,
                 idempotency_key=command.idempotency_key,
             ),
             base_price=Money(amount=course.price, currency=course.currency),
@@ -199,6 +210,7 @@ class PaymentApplicationFacade:
             self.access_repo.save(grant)
             uow.commit()
         self._sync_course_access_granted(grant)
+        self._commit_bonus_redeem(intent)
         return self._to_access_view(grant)
 
     def reject_payment_intent(
@@ -322,6 +334,7 @@ class PaymentApplicationFacade:
             status=intent.status.value,
             base_price=float(intent.base_price.amount),
             final_price=float(intent.final_price.amount),
+            bonus_amount=int(intent.context.bonus_amount),
             currency=intent.final_price.currency,
             expires_at=intent.context.expires_at,
             created_at=intent.meta.created_at,
@@ -384,4 +397,29 @@ class PaymentApplicationFacade:
             course_id=grant.subject.course_id,
             student_id=grant.subject.student_id,
             granted_status="approved",
+        )
+
+    def _resolve_bonus_quote(
+        self,
+        *,
+        command: CreatePaymentIntentCommand,
+        payment_intent_id: str,
+    ) -> BonusQuoteSnapshot:
+        requested_amount = command.bonus_amount or 0
+        if requested_amount <= 0:
+            return BonusQuoteSnapshot(requested_amount=0, allowed_amount=0)
+        return self.bonus_wallet.quote_redeem(
+            parent_id=command.parent_id,
+            requested_amount=requested_amount,
+            payment_intent_id=payment_intent_id,
+        )
+
+    def _commit_bonus_redeem(self, intent: PaymentIntent) -> None:
+        if intent.context.bonus_amount <= 0:
+            return
+        self.bonus_wallet.commit_redeem(
+            parent_id=intent.context.parent_id,
+            amount=intent.context.bonus_amount,
+            payment_intent_id=intent.payment_intent_id,
+            idempotency_key=f"payment-approve:{intent.payment_intent_id}",
         )

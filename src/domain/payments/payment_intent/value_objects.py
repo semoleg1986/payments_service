@@ -66,6 +66,7 @@ class PaymentContext:
     student_id: str
     course_id: str
     attribution_token: str | None = None
+    bonus_amount: int = 0
     idempotency_key: str | None = None
     expires_at: datetime | None = None
 
@@ -76,5 +77,7 @@ class PaymentContext:
             raise InvariantViolationError("student_id обязателен.")
         if not self.course_id.strip():
             raise InvariantViolationError("course_id обязателен.")
+        if self.bonus_amount < 0:
+            raise InvariantViolationError("bonus_amount не может быть отрицательным.")
         if self.idempotency_key is not None and not self.idempotency_key.strip():
             raise InvariantViolationError("idempotency_key не может быть пустым.")

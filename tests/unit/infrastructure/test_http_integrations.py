@@ -9,6 +9,7 @@ from src.domain.errors import InvariantViolationError
 from src.infrastructure.integrations.http.attribution_discount import (
     HttpAttributionDiscountPort,
 )
+from src.infrastructure.integrations.http.bonus_wallet import HttpBonusWalletPort
 from src.infrastructure.integrations.http.course_access_sync import (
     HttpCourseAccessSyncPort,
 )
@@ -252,6 +253,39 @@ def test_http_course_access_sync_posts_event(
         "student_id": "student-1",
         "granted_status": "approved",
     }
+
+
+def test_http_bonus_wallet_quote_parses_allowed_amount(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fake_urlopen(request, timeout: float = 2.0):  # noqa: ANN001
+        return _FakeResponse(
+            {
+                "parent_id": "parent-1",
+                "requested_amount": 25,
+                "available_balance": 40,
+                "allowed_amount": 25,
+                "payment_intent_id": "pi-1",
+            }
+        )
+
+    monkeypatch.setattr(
+        "src.infrastructure.integrations.http.bonus_wallet.urlopen",
+        _fake_urlopen,
+    )
+    adapter = HttpBonusWalletPort(
+        base_url="http://bonus-service:8006",
+        service_token="token",
+        timeout_seconds=2.0,
+    )
+
+    result = adapter.quote_redeem(
+        parent_id="parent-1",
+        requested_amount=25,
+        payment_intent_id="pi-1",
+    )
+    assert result.requested_amount == 25
+    assert result.allowed_amount == 25
 
 
 def test_http_adapters_forward_correlation_id_when_present(

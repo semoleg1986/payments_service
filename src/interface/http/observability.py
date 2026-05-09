@@ -180,12 +180,17 @@ def install_observability(app: FastAPI) -> None:
             for (service, method, path, status), value in sorted(
                 _REQUESTS_TOTAL.items()
             ):
-                lines.append(
-                    f'http_requests_total{{service="{service}",method="{method}",path="{path}",status="{status}"}} {value}'
+                labels = (
+                    f'service="{service}",method="{method}",'
+                    f'path="{path}",status="{status}"'
                 )
+                lines.append(f"http_requests_total{{{labels}}} {value}")
             lines.extend(
                 [
-                    "# HELP http_request_duration_seconds HTTP request latency in seconds.",
+                    (
+                        "# HELP http_request_duration_seconds HTTP request latency "
+                        "in seconds."
+                    ),
                     "# TYPE http_request_duration_seconds summary",
                 ]
             )
@@ -200,14 +205,16 @@ def install_observability(app: FastAPI) -> None:
                 lines.append(f"http_request_duration_seconds_count{{{labels}}} {count}")
             lines.extend(
                 [
-                    "# HELP http_errors_total Total HTTP error responses (status >= 400).",
+                    (
+                        "# HELP http_errors_total Total HTTP error responses "
+                        "(status >= 400)."
+                    ),
                     "# TYPE http_errors_total counter",
                 ]
             )
             for (service, path, status), value in sorted(_ERRORS_TOTAL.items()):
-                lines.append(
-                    f'http_errors_total{{service="{service}",path="{path}",status="{status}"}} {value}'
-                )
+                labels = f'service="{service}",path="{path}",status="{status}"'
+                lines.append(f"http_errors_total{{{labels}}} {value}")
             for name in sorted(_CUSTOM_COUNTER_DOCS):
                 lines.extend(
                     [

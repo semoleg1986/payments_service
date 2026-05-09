@@ -40,6 +40,7 @@ def create_payment_intent(
             student_id=body.student_id,
             course_id=body.course_id,
             attribution_token=body.attribution_token,
+            bonus_amount=body.bonus_amount,
             idempotency_key=body.idempotency_key,
             actor_id=actor.actor_id,
             actor_roles=actor.roles,

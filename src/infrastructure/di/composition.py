@@ -23,6 +23,7 @@ from src.infrastructure.db.sqlalchemy.uow import SqlAlchemyUnitOfWork
 from src.infrastructure.integrations.http.attribution_discount import (
     HttpAttributionDiscountPort,
 )
+from src.infrastructure.integrations.http.bonus_wallet import HttpBonusWalletPort
 from src.infrastructure.integrations.http.course_access_sync import (
     HttpCourseAccessSyncPort,
 )
@@ -30,6 +31,9 @@ from src.infrastructure.integrations.http.course_catalog import HttpCourseCatalo
 from src.infrastructure.integrations.http.user_relations import HttpUserRelationsPort
 from src.infrastructure.integrations.in_memory.attribution_discount import (
     InMemoryAttributionDiscountPort,
+)
+from src.infrastructure.integrations.in_memory.bonus_wallet import (
+    InMemoryBonusWalletPort,
 )
 from src.infrastructure.integrations.in_memory.course_access_sync import (
     InMemoryCourseAccessSyncPort,
@@ -80,7 +84,10 @@ def build_runtime() -> RuntimeContainer:
         access_repo = InMemoryCourseAccessGrantRepository()
         audit_repo = InMemoryPaymentAuditRepository()
         uow = InMemoryUnitOfWork()
-        uow_factory = lambda: uow
+
+        def uow_factory():
+            return uow
+
     else:
         from src.infrastructure.db.sqlalchemy import models as _models  # noqa: F401
 
@@ -91,12 +98,15 @@ def build_runtime() -> RuntimeContainer:
         payment_repo = SqlAlchemyPaymentIntentRepository(session_factory)
         access_repo = SqlAlchemyCourseAccessGrantRepository(session_factory)
         audit_repo = SqlAlchemyPaymentAuditRepository(session_factory)
-        uow_factory = lambda: SqlAlchemyUnitOfWork(session_factory)
+
+        def uow_factory():
+            return SqlAlchemyUnitOfWork(session_factory)
 
     if settings.integrations_use_inmemory:
         course_catalog = InMemoryCourseCatalogPort()
         user_relations = InMemoryUserRelationsPort()
         attribution = InMemoryAttributionDiscountPort()
+        bonus_wallet = InMemoryBonusWalletPort()
         course_access_sync = InMemoryCourseAccessSyncPort()
     else:
         course_catalog = HttpCourseCatalogPort(
@@ -114,6 +124,11 @@ def build_runtime() -> RuntimeContainer:
             service_token=settings.attr_service_token,
             timeout_seconds=settings.attr_service_timeout_seconds,
         )
+        bonus_wallet = HttpBonusWalletPort(
+            base_url=settings.bonus_service_base_url,
+            service_token=settings.bonus_service_token,
+            timeout_seconds=settings.bonus_service_timeout_seconds,
+        )
         course_access_sync = HttpCourseAccessSyncPort(
             base_url=settings.course_service_base_url,
             service_token=settings.course_service_token,
@@ -126,6 +141,7 @@ def build_runtime() -> RuntimeContainer:
         course_catalog=course_catalog,
         user_relations=user_relations,
         attribution=attribution,
+        bonus_wallet=bonus_wallet,
         id_generator=UuidGenerator(),
         clock=UtcClock(),
         uow_factory=uow_factory,

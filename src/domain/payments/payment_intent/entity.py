@@ -46,7 +46,14 @@ class PaymentIntent:
         if not payment_intent_id.strip():
             raise InvariantViolationError("payment_intent_id обязателен.")
 
-        final_price = discount.apply_to(base_price)
+        discounted_price = discount.apply_to(base_price)
+        final_price = Money(
+            amount=round(
+                max(discounted_price.amount - float(context.bonus_amount), 0.0),
+                2,
+            ),
+            currency=discounted_price.currency,
+        )
         entity = cls(
             payment_intent_id=payment_intent_id,
             context=context,

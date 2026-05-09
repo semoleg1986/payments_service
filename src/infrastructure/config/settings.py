@@ -32,6 +32,9 @@ class Settings:
     attr_service_base_url: str
     attr_service_token: str
     attr_service_timeout_seconds: float
+    bonus_service_base_url: str
+    bonus_service_token: str
+    bonus_service_timeout_seconds: float
     parent_payment_create_rate_limit_max: int
     parent_payment_create_rate_limit_window_seconds: int
     admin_payment_approve_rate_limit_max: int
@@ -88,6 +91,15 @@ class Settings:
             ),
             attr_service_timeout_seconds=float(
                 os.getenv("PAYMENTS_ATTR_SERVICE_TIMEOUT_SECONDS", "2")
+            ),
+            bonus_service_base_url=os.getenv(
+                "PAYMENTS_BONUS_SERVICE_BASE_URL", "http://localhost:8006"
+            ),
+            bonus_service_token=os.getenv(
+                "PAYMENTS_BONUS_SERVICE_TOKEN", "dev-service-token"
+            ),
+            bonus_service_timeout_seconds=float(
+                os.getenv("PAYMENTS_BONUS_SERVICE_TIMEOUT_SECONDS", "2")
             ),
             parent_payment_create_rate_limit_max=int(
                 os.getenv("PAYMENTS_RATE_LIMIT_PARENT_CREATE_MAX", "20")

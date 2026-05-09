@@ -85,6 +85,7 @@ class SqlAlchemyPaymentIntentRepository:
         model.status = intent.status.value
         model.base_amount = float(intent.base_price.amount)
         model.final_amount = float(intent.final_price.amount)
+        model.bonus_amount = int(intent.context.bonus_amount)
         model.currency = intent.final_price.currency
         model.discount_kind = intent.discount.kind
         model.discount_value = float(intent.discount.value)
@@ -110,6 +111,7 @@ class SqlAlchemyPaymentIntentRepository:
                 student_id=model.student_id,
                 course_id=model.course_id,
                 attribution_token=model.attribution_token,
+                bonus_amount=int(model.bonus_amount),
                 idempotency_key=model.idempotency_key,
                 expires_at=model.expires_at,
             ),

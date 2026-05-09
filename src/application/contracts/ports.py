@@ -148,6 +148,47 @@ class AttributionDiscountPort(Protocol):
         """Возвращает скидку для расчета final_price."""
 
 
+@dataclass(frozen=True, slots=True)
+class BonusQuoteSnapshot:
+    """Минимальный снимок разрешенного бонусного списания."""
+
+    requested_amount: int
+    allowed_amount: int
+
+
+class BonusWalletPort(Protocol):
+    """Порт бонусного кошелька для quote/commit/revert."""
+
+    def quote_redeem(
+        self,
+        *,
+        parent_id: str,
+        requested_amount: int,
+        payment_intent_id: str,
+    ) -> BonusQuoteSnapshot:
+        """Возвращает допустимое бонусное списание без сайд-эффекта."""
+
+    def commit_redeem(
+        self,
+        *,
+        parent_id: str,
+        amount: int,
+        payment_intent_id: str,
+        idempotency_key: str,
+    ) -> None:
+        """Фиксирует бонусное списание для платежа."""
+
+    def revert_redeem(
+        self,
+        *,
+        parent_id: str,
+        amount: int,
+        payment_intent_id: str,
+        idempotency_key: str,
+    ) -> None:
+        """Компенсирует ранее зафиксированное бонусное списание."""
+
+
 class CourseAccessSyncPort(Protocol):
     """Порт синхронизации access grant в course_service."""
 

@@ -14,6 +14,7 @@ class CreatePaymentIntentCommand:
     student_id: str
     course_id: str
     attribution_token: str | None
+    bonus_amount: int | None
     idempotency_key: str | None
     actor_id: str
     actor_roles: tuple[str, ...]

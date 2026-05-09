@@ -15,6 +15,7 @@ class CreatePaymentIntentRequest(BaseModel):
     student_id: str
     course_id: str
     attribution_token: str | None = None
+    bonus_amount: int | None = Field(default=None, ge=0)
     idempotency_key: str | None = None
 
 
@@ -40,6 +41,7 @@ class PaymentIntentResponse(BaseModel):
     status: str
     base_price: float
     final_price: float
+    bonus_amount: int
     currency: str
     expires_at: datetime | None = None
     created_at: datetime

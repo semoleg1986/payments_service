@@ -30,6 +30,7 @@ class PaymentIntentView:
     status: str
     base_price: float
     final_price: float
+    bonus_amount: int
     currency: str
     expires_at: datetime | None
     created_at: datetime

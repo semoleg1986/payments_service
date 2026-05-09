@@ -24,6 +24,9 @@ from src.infrastructure.db.sqlalchemy.uow import SqlAlchemyUnitOfWork
 from src.infrastructure.integrations.in_memory.attribution_discount import (
     InMemoryAttributionDiscountPort,
 )
+from src.infrastructure.integrations.in_memory.bonus_wallet import (
+    InMemoryBonusWalletPort,
+)
 from src.infrastructure.integrations.in_memory.course_catalog import (
     InMemoryCourseCatalogPort,
 )
@@ -59,6 +62,7 @@ def test_approve_is_atomic_with_sqlalchemy_uow(tmp_path: Path) -> None:
         course_catalog=InMemoryCourseCatalogPort(),
         user_relations=InMemoryUserRelationsPort(),
         attribution=InMemoryAttributionDiscountPort(),
+        bonus_wallet=InMemoryBonusWalletPort(),
         id_generator=UuidGenerator(),
         clock=UtcClock(),
         uow_factory=lambda: SqlAlchemyUnitOfWork(session_factory),
@@ -72,6 +76,7 @@ def test_approve_is_atomic_with_sqlalchemy_uow(tmp_path: Path) -> None:
             student_id="student-1",
             course_id="course-1",
             attribution_token=None,
+            bonus_amount=None,
             idempotency_key="atomicity-1",
             actor_id="parent-1",
             actor_roles=("parent",),
@@ -84,6 +89,7 @@ def test_approve_is_atomic_with_sqlalchemy_uow(tmp_path: Path) -> None:
         course_catalog=InMemoryCourseCatalogPort(),
         user_relations=InMemoryUserRelationsPort(),
         attribution=InMemoryAttributionDiscountPort(),
+        bonus_wallet=InMemoryBonusWalletPort(),
         id_generator=UuidGenerator(),
         clock=UtcClock(),
         uow_factory=lambda: SqlAlchemyUnitOfWork(session_factory),

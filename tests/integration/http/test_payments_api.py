@@ -41,6 +41,7 @@ def test_full_flow_create_approve_and_internal_access_check() -> None:
             "course_id": "course-1",
             "idempotency_key": "idem-http-1",
             "attribution_token": "promo10-abc",
+            "bonus_amount": 15,
         },
     )
     assert create_resp.status_code == 201
@@ -53,6 +54,8 @@ def test_full_flow_create_approve_and_internal_access_check() -> None:
         == "camera=(), microphone=(), geolocation=()"
     )
     payment_id = create_resp.json()["payment_intent_id"]
+    assert create_resp.json()["bonus_amount"] == 15
+    assert create_resp.json()["final_price"] == 93.0
 
     approve_resp = client.post(
         f"/v1/admin/payments/{payment_id}/approve",
@@ -207,6 +210,46 @@ def test_parent_create_payment_intent_is_rate_limited(monkeypatch) -> None:
     assert (
         limited_resp.json()["detail"]["correlation_id"] == "corr-payments-rl-parent-1"
     )
+
+
+def test_bonus_amount_is_replayed_by_payment_intent_idempotency() -> None:
+    wiring._runtime = None  # type: ignore[attr-defined]
+    reset_metrics()
+    reset_rate_limiter()
+    app = create_app()
+    app.dependency_overrides[get_access_token_verifier] = lambda: _FakeVerifier()
+    client = TestClient(app)
+
+    first_resp = client.post(
+        "/v1/parent/payments/intents",
+        headers=_headers("parent-token"),
+        json={
+            "parent_id": "parent-1",
+            "student_id": "student-1",
+            "course_id": "course-1",
+            "idempotency_key": "idem-http-bonus-1",
+            "bonus_amount": 20,
+        },
+    )
+    assert first_resp.status_code == 201
+
+    replay_resp = client.post(
+        "/v1/parent/payments/intents",
+        headers=_headers("parent-token"),
+        json={
+            "parent_id": "parent-1",
+            "student_id": "student-1",
+            "course_id": "course-1",
+            "idempotency_key": "idem-http-bonus-1",
+            "bonus_amount": 20,
+        },
+    )
+    assert replay_resp.status_code == 201
+    assert (
+        replay_resp.json()["payment_intent_id"]
+        == first_resp.json()["payment_intent_id"]
+    )
+    assert replay_resp.json()["bonus_amount"] == 20
 
 
 def test_admin_approve_payment_intent_is_rate_limited(monkeypatch) -> None:
