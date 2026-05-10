@@ -35,6 +35,14 @@ make migrate
 make run
 ```
 
+## Outbox dispatcher
+
+Разовый drain pending outbox-событий:
+
+```bash
+python -m src.interface.http.main dispatch-outbox --limit 100
+```
+
 ## Переменные окружения
 
 Ключевые переменные в [.env.example](/Users/olegsemenov/Programming/curs/payments_service/.env.example):
