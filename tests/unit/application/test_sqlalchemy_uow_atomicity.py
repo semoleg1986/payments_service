@@ -19,6 +19,9 @@ from src.infrastructure.db.sqlalchemy.course_access_grant_repository_sqlalchemy 
 from src.infrastructure.db.sqlalchemy.payment_intent_repository_sqlalchemy import (
     SqlAlchemyPaymentIntentRepository,
 )
+from src.infrastructure.db.sqlalchemy.payment_outbox_repository_sqlalchemy import (
+    SqlAlchemyPaymentOutboxRepository,
+)
 from src.infrastructure.db.sqlalchemy.session import build_engine, build_session_factory
 from src.infrastructure.db.sqlalchemy.uow import SqlAlchemyUnitOfWork
 from src.infrastructure.integrations.in_memory.attribution_discount import (
@@ -67,6 +70,7 @@ def test_approve_is_atomic_with_sqlalchemy_uow(tmp_path: Path) -> None:
         clock=UtcClock(),
         uow_factory=lambda: SqlAlchemyUnitOfWork(session_factory),
         audit_repo=InMemoryPaymentAuditRepository(),
+        outbox_repo=SqlAlchemyPaymentOutboxRepository(session_factory),
     )
 
     created = facade_ok.create_payment_intent(
@@ -94,6 +98,7 @@ def test_approve_is_atomic_with_sqlalchemy_uow(tmp_path: Path) -> None:
         clock=UtcClock(),
         uow_factory=lambda: SqlAlchemyUnitOfWork(session_factory),
         audit_repo=InMemoryPaymentAuditRepository(),
+        outbox_repo=SqlAlchemyPaymentOutboxRepository(session_factory),
     )
 
     with pytest.raises(RuntimeError):

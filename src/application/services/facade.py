@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -27,6 +28,10 @@ from src.application.contracts.ports import (
     CourseAccessSyncPort,
     CourseCatalogPort,
     IdGenerator,
+    OutboxEventRecord,
+    OutboxEventRepositoryPort,
+    OutboxEventStatus,
+    OutboxEventType,
     PaymentIntentRepositoryPort,
     UnitOfWorkFactory,
     UserRelationsPort,
@@ -68,6 +73,7 @@ class PaymentApplicationFacade:
     clock: Clock
     uow_factory: UnitOfWorkFactory
     audit_repo: AuditEvidenceRepositoryPort
+    outbox_repo: OutboxEventRepositoryPort
     course_access_sync: CourseAccessSyncPort | None = None
 
     def create_payment_intent(
@@ -177,7 +183,9 @@ class PaymentApplicationFacade:
             )
 
         if existing_grant is not None:
-            self._sync_course_access_granted(existing_grant)
+            self.dispatch_pending_side_effects(
+                aggregate_id=existing_grant.payment_intent_id
+            )
             return self._to_access_view(existing_grant)
 
         ensure_no_other_active_access(
@@ -208,9 +216,9 @@ class PaymentApplicationFacade:
         with self.uow_factory() as uow:
             self.payment_repo.save(intent)
             self.access_repo.save(grant)
+            self._enqueue_approval_side_effects(intent=intent, grant=grant)
             uow.commit()
-        self._sync_course_access_granted(grant)
-        self._commit_bonus_redeem(intent)
+        self.dispatch_pending_side_effects(aggregate_id=intent.payment_intent_id)
         return self._to_access_view(grant)
 
     def reject_payment_intent(
@@ -423,3 +431,107 @@ class PaymentApplicationFacade:
             payment_intent_id=intent.payment_intent_id,
             idempotency_key=f"payment-approve:{intent.payment_intent_id}",
         )
+
+    def dispatch_pending_side_effects(
+        self,
+        *,
+        aggregate_id: str | None = None,
+        limit: int = 100,
+    ) -> None:
+        """Доставляет pending outbox-события после локального commit."""
+
+        if aggregate_id is None:
+            events = self.outbox_repo.list_pending(limit=limit)
+        else:
+            events = self.outbox_repo.list_pending_by_aggregate(
+                aggregate_id=aggregate_id
+            )
+
+        for event in events:
+            try:
+                self._dispatch_outbox_event(event)
+            except Exception as exc:
+                self.outbox_repo.save(event.mark_failed(error=str(exc)))
+            else:
+                self.outbox_repo.save(event.mark_processed(at=self.clock.now()))
+
+    def _enqueue_approval_side_effects(
+        self,
+        *,
+        intent: PaymentIntent,
+        grant: CourseAccessGrant,
+    ) -> None:
+        created_at = self.clock.now()
+        self.outbox_repo.add(
+            OutboxEventRecord(
+                event_id=self.id_generator.new_id(),
+                aggregate_type="payment_intent",
+                aggregate_id=intent.payment_intent_id,
+                event_type=OutboxEventType.COURSE_ACCESS_GRANTED_SYNC,
+                payload_json=json.dumps(
+                    {
+                        "access_grant_id": grant.access_grant_id,
+                        "payment_intent_id": intent.payment_intent_id,
+                        "course_id": grant.subject.course_id,
+                        "student_id": grant.subject.student_id,
+                        "granted_status": "approved",
+                    },
+                    ensure_ascii=True,
+                    sort_keys=True,
+                ),
+                status=OutboxEventStatus.PENDING,
+                attempt_count=0,
+                available_at=created_at,
+                created_at=created_at,
+            )
+        )
+
+        if intent.context.bonus_amount > 0:
+            self.outbox_repo.add(
+                OutboxEventRecord(
+                    event_id=self.id_generator.new_id(),
+                    aggregate_type="payment_intent",
+                    aggregate_id=intent.payment_intent_id,
+                    event_type=OutboxEventType.BONUS_REDEEM_COMMIT,
+                    payload_json=json.dumps(
+                        {
+                            "parent_id": intent.context.parent_id,
+                            "amount": int(intent.context.bonus_amount),
+                            "payment_intent_id": intent.payment_intent_id,
+                            "idempotency_key": (
+                                f"payment-approve:{intent.payment_intent_id}"
+                            ),
+                        },
+                        ensure_ascii=True,
+                        sort_keys=True,
+                    ),
+                    status=OutboxEventStatus.PENDING,
+                    attempt_count=0,
+                    available_at=created_at,
+                    created_at=created_at,
+                )
+            )
+
+    def _dispatch_outbox_event(self, event: OutboxEventRecord) -> None:
+        payload = json.loads(event.payload_json)
+        if event.event_type == OutboxEventType.COURSE_ACCESS_GRANTED_SYNC:
+            if self.course_access_sync is None:
+                raise RuntimeError("CourseAccessSyncPort не настроен.")
+            self.course_access_sync.sync_course_access_granted(
+                event_id=payload["access_grant_id"],
+                course_id=payload["course_id"],
+                student_id=payload["student_id"],
+                granted_status=payload["granted_status"],
+            )
+            return
+
+        if event.event_type == OutboxEventType.BONUS_REDEEM_COMMIT:
+            self.bonus_wallet.commit_redeem(
+                parent_id=payload["parent_id"],
+                amount=int(payload["amount"]),
+                payment_intent_id=payload["payment_intent_id"],
+                idempotency_key=payload["idempotency_key"],
+            )
+            return
+
+        raise RuntimeError(f"Неизвестный тип outbox-события: {event.event_type}")

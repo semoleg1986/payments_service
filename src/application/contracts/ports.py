@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
+from enum import StrEnum
 from typing import Callable, Protocol
 
 from src.domain.payments import CourseAccessGrant, PaymentIntent
@@ -187,6 +188,74 @@ class BonusWalletPort(Protocol):
         idempotency_key: str,
     ) -> None:
         """Компенсирует ранее зафиксированное бонусное списание."""
+
+
+class OutboxEventStatus(StrEnum):
+    """Статус доставки outbox-события."""
+
+    PENDING = "pending"
+    PROCESSED = "processed"
+
+
+class OutboxEventType(StrEnum):
+    """Типы межсервисных side effect событий payments_service."""
+
+    COURSE_ACCESS_GRANTED_SYNC = "course_access_granted_sync"
+    BONUS_REDEEM_COMMIT = "bonus_redeem_commit"
+
+
+@dataclass(frozen=True, slots=True)
+class OutboxEventRecord:
+    """Persisted outbox event для надежной межсервисной доставки."""
+
+    event_id: str
+    aggregate_type: str
+    aggregate_id: str
+    event_type: OutboxEventType
+    payload_json: str
+    status: OutboxEventStatus
+    attempt_count: int
+    available_at: datetime
+    created_at: datetime
+    processed_at: datetime | None = None
+    last_error: str | None = None
+
+    def mark_processed(self, *, at: datetime) -> "OutboxEventRecord":
+        """Возвращает событие в состоянии processed."""
+
+        return replace(
+            self,
+            status=OutboxEventStatus.PROCESSED,
+            processed_at=at,
+            last_error=None,
+        )
+
+    def mark_failed(self, *, error: str) -> "OutboxEventRecord":
+        """Возвращает событие с увеличенным счетчиком попыток."""
+
+        return replace(
+            self,
+            attempt_count=self.attempt_count + 1,
+            last_error=error[:1000],
+        )
+
+
+class OutboxEventRepositoryPort(Protocol):
+    """Порт persisted outbox-хранилища."""
+
+    def add(self, event: OutboxEventRecord) -> None:
+        """Добавляет новое событие в outbox."""
+
+    def save(self, event: OutboxEventRecord) -> None:
+        """Обновляет состояние существующего outbox-события."""
+
+    def list_pending(self, *, limit: int = 100) -> list[OutboxEventRecord]:
+        """Возвращает pending-события в порядке создания."""
+
+    def list_pending_by_aggregate(
+        self, *, aggregate_id: str
+    ) -> list[OutboxEventRecord]:
+        """Возвращает pending-события для конкретного aggregate."""
 
 
 class CourseAccessSyncPort(Protocol):

@@ -18,6 +18,9 @@ from src.infrastructure.db.sqlalchemy.payment_audit_repository_sqlalchemy import
 from src.infrastructure.db.sqlalchemy.payment_intent_repository_sqlalchemy import (
     SqlAlchemyPaymentIntentRepository,
 )
+from src.infrastructure.db.sqlalchemy.payment_outbox_repository_sqlalchemy import (
+    SqlAlchemyPaymentOutboxRepository,
+)
 from src.infrastructure.db.sqlalchemy.session import build_engine, build_session_factory
 from src.infrastructure.db.sqlalchemy.uow import SqlAlchemyUnitOfWork
 from src.infrastructure.integrations.http.attribution_discount import (
@@ -53,6 +56,9 @@ from src.infrastructure.persistence.in_memory.payment_audit_repository import (
 from src.infrastructure.persistence.in_memory.payment_intent_repository import (
     InMemoryPaymentIntentRepository,
 )
+from src.infrastructure.persistence.in_memory.payment_outbox_repository import (
+    InMemoryPaymentOutboxRepository,
+)
 from src.infrastructure.system.clock import UtcClock
 from src.infrastructure.system.id_generator import UuidGenerator
 from src.infrastructure.system.unit_of_work import InMemoryUnitOfWork
@@ -83,6 +89,7 @@ def build_runtime() -> RuntimeContainer:
         payment_repo = InMemoryPaymentIntentRepository()
         access_repo = InMemoryCourseAccessGrantRepository()
         audit_repo = InMemoryPaymentAuditRepository()
+        outbox_repo = InMemoryPaymentOutboxRepository()
         uow = InMemoryUnitOfWork()
 
         def uow_factory():
@@ -98,6 +105,7 @@ def build_runtime() -> RuntimeContainer:
         payment_repo = SqlAlchemyPaymentIntentRepository(session_factory)
         access_repo = SqlAlchemyCourseAccessGrantRepository(session_factory)
         audit_repo = SqlAlchemyPaymentAuditRepository(session_factory)
+        outbox_repo = SqlAlchemyPaymentOutboxRepository(session_factory)
 
         def uow_factory():
             return SqlAlchemyUnitOfWork(session_factory)
@@ -146,6 +154,7 @@ def build_runtime() -> RuntimeContainer:
         clock=UtcClock(),
         uow_factory=uow_factory,
         audit_repo=audit_repo,
+        outbox_repo=outbox_repo,
         course_access_sync=course_access_sync,
     )
     return RuntimeContainer(
