@@ -257,6 +257,12 @@ class OutboxEventRepositoryPort(Protocol):
     ) -> list[OutboxEventRecord]:
         """Возвращает pending-события для конкретного aggregate."""
 
+    def count_pending(self) -> int:
+        """Возвращает количество pending-событий."""
+
+    def oldest_pending_created_at(self) -> datetime | None:
+        """Возвращает created_at самого старого pending-события."""
+
 
 class CourseAccessSyncPort(Protocol):
     """Порт синхронизации access grant в course_service."""

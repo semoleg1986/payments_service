@@ -39,3 +39,18 @@ class InMemoryPaymentOutboxRepository:
             ),
             key=lambda item: item.created_at,
         )
+
+    def count_pending(self) -> int:
+        return sum(
+            1
+            for item in self._items.values()
+            if item.status == OutboxEventStatus.PENDING
+        )
+
+    def oldest_pending_created_at(self):
+        pending = [
+            item.created_at
+            for item in self._items.values()
+            if item.status == OutboxEventStatus.PENDING
+        ]
+        return min(pending) if pending else None

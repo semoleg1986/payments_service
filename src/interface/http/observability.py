@@ -235,6 +235,42 @@ def install_observability(app: FastAPI) -> None:
                     else:
                         lines.append(f"{name} {value}")
 
+        try:
+            from src.interface.http.wiring import get_runtime
+
+            runtime = get_runtime()
+            pending_total = runtime.facade.outbox_repo.count_pending()
+            oldest_created_at = runtime.facade.outbox_repo.oldest_pending_created_at()
+        except Exception:
+            pending_total = 0
+            oldest_created_at = None
+
+        oldest_age_seconds = 0.0
+        if oldest_created_at is not None:
+            oldest_age_seconds = max(
+                0.0,
+                (
+                    datetime.now(timezone.utc)
+                    - oldest_created_at.astimezone(timezone.utc)
+                ).total_seconds(),
+            )
+        lines.extend(
+            [
+                "# HELP outbox_pending_total Total pending outbox events.",
+                "# TYPE outbox_pending_total gauge",
+                f'outbox_pending_total{{service="{_SERVICE}"}} {pending_total}',
+                (
+                    "# HELP outbox_oldest_pending_age_seconds Age of the oldest "
+                    "pending outbox event."
+                ),
+                "# TYPE outbox_oldest_pending_age_seconds gauge",
+                (
+                    f'outbox_oldest_pending_age_seconds{{service="{_SERVICE}"}} '
+                    f"{oldest_age_seconds}"
+                ),
+            ]
+        )
+
         return PlainTextResponse(
             content="\n".join(lines) + "\n",
             media_type="text/plain; version=0.0.4; charset=utf-8",

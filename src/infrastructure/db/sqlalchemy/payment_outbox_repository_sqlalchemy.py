@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from src.application.contracts import (
@@ -72,6 +72,28 @@ class SqlAlchemyPaymentOutboxRepository:
                 .order_by(PaymentOutboxEventModel.created_at)
             ).all()
             return [self._to_entity(item) for item in models]
+
+    def count_pending(self) -> int:
+        with self._session() as session:
+            return int(
+                session.scalar(
+                    select(func.count())
+                    .select_from(PaymentOutboxEventModel)
+                    .where(
+                        PaymentOutboxEventModel.status
+                        == OutboxEventStatus.PENDING.value
+                    )
+                )
+                or 0
+            )
+
+    def oldest_pending_created_at(self):
+        with self._session() as session:
+            return session.scalar(
+                select(func.min(PaymentOutboxEventModel.created_at)).where(
+                    PaymentOutboxEventModel.status == OutboxEventStatus.PENDING.value
+                )
+            )
 
     @staticmethod
     def _to_model(event: OutboxEventRecord) -> PaymentOutboxEventModel:
