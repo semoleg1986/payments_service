@@ -20,6 +20,7 @@ class CourseAccessGrant:
 
     access_grant_id: str
     payment_intent_id: str
+    offer_id: str
     subject: AccessSubject
     status: AccessStatus
     granted_at: datetime | None
@@ -35,6 +36,7 @@ class CourseAccessGrant:
         cls,
         access_grant_id: str,
         payment_intent_id: str,
+        offer_id: str,
         subject: AccessSubject,
         created_at: datetime,
         created_by: str,
@@ -45,10 +47,13 @@ class CourseAccessGrant:
             raise InvariantViolationError("access_grant_id обязателен.")
         if not payment_intent_id.strip():
             raise InvariantViolationError("payment_intent_id обязателен.")
+        if not offer_id.strip():
+            raise InvariantViolationError("offer_id обязателен.")
 
         return cls(
             access_grant_id=access_grant_id,
             payment_intent_id=payment_intent_id,
+            offer_id=offer_id,
             subject=subject,
             status=AccessStatus.PENDING,
             granted_at=None,
@@ -77,6 +82,7 @@ class CourseAccessGrant:
         entity = cls.create_pending(
             access_grant_id=access_grant_id,
             payment_intent_id=intent.payment_intent_id,
+            offer_id=intent.context.offer_id,
             subject=AccessSubject(
                 course_id=intent.context.course_id,
                 student_id=intent.context.student_id,
@@ -115,6 +121,7 @@ class CourseAccessGrant:
             CourseAccessGranted(
                 access_grant_id=self.access_grant_id,
                 payment_intent_id=self.payment_intent_id,
+                offer_id=self.offer_id,
                 course_id=self.subject.course_id,
                 student_id=self.subject.student_id,
                 occurred_at=at,

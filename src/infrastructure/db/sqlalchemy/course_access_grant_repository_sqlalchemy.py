@@ -90,6 +90,7 @@ class SqlAlchemyCourseAccessGrantRepository:
     @staticmethod
     def _fill_model(model: CourseAccessGrantModel, grant: CourseAccessGrant) -> None:
         model.payment_intent_id = grant.payment_intent_id
+        model.offer_id = grant.offer_id
         model.course_id = grant.subject.course_id
         model.student_id = grant.subject.student_id
         model.status = grant.status.value
@@ -111,6 +112,7 @@ class SqlAlchemyCourseAccessGrantRepository:
         return CourseAccessGrant(
             access_grant_id=model.access_grant_id,
             payment_intent_id=model.payment_intent_id,
+            offer_id=model.offer_id,
             subject=AccessSubject(
                 course_id=model.course_id,
                 student_id=model.student_id,

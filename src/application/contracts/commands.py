@@ -12,7 +12,7 @@ class CreatePaymentIntentCommand:
     payment_intent_id: str
     parent_id: str
     student_id: str
-    course_id: str
+    offer_id: str
     attribution_token: str | None
     bonus_amount: int | None
     idempotency_key: str | None

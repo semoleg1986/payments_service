@@ -31,14 +31,14 @@ def create_payment_intent(
     actor: HttpActor = Depends(get_http_actor),
     facade: ApplicationFacade = Depends(get_facade),
 ) -> PaymentIntentResponse:
-    """Создает intent на оплату курса."""
+    """Создает intent на оплату offer."""
 
     result = facade.create_payment_intent(
         CreatePaymentIntentCommand(
             payment_intent_id=body.payment_intent_id or "",
             parent_id=body.parent_id,
             student_id=body.student_id,
-            course_id=body.course_id,
+            offer_id=body.offer_id,
             attribution_token=body.attribution_token,
             bonus_amount=body.bonus_amount,
             idempotency_key=body.idempotency_key,

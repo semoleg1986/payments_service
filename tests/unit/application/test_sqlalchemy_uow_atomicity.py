@@ -30,6 +30,9 @@ from src.infrastructure.integrations.in_memory.attribution_discount import (
 from src.infrastructure.integrations.in_memory.bonus_wallet import (
     InMemoryBonusWalletPort,
 )
+from src.infrastructure.integrations.in_memory.commercial_catalog import (
+    InMemoryCommercialCatalogPort,
+)
 from src.infrastructure.integrations.in_memory.course_catalog import (
     InMemoryCourseCatalogPort,
 )
@@ -62,6 +65,7 @@ def test_approve_is_atomic_with_sqlalchemy_uow(tmp_path: Path) -> None:
     facade_ok = PaymentApplicationFacade(
         payment_repo=payment_repo,
         access_repo=access_repo_ok,
+        commercial_catalog=InMemoryCommercialCatalogPort(),
         course_catalog=InMemoryCourseCatalogPort(),
         user_relations=InMemoryUserRelationsPort(),
         attribution=InMemoryAttributionDiscountPort(),
@@ -78,7 +82,7 @@ def test_approve_is_atomic_with_sqlalchemy_uow(tmp_path: Path) -> None:
             payment_intent_id="",
             parent_id="parent-1",
             student_id="student-1",
-            course_id="course-1",
+            offer_id="course-1-standard",
             attribution_token=None,
             bonus_amount=None,
             idempotency_key="atomicity-1",
@@ -90,6 +94,7 @@ def test_approve_is_atomic_with_sqlalchemy_uow(tmp_path: Path) -> None:
     facade_failing = PaymentApplicationFacade(
         payment_repo=payment_repo,
         access_repo=_FailingAccessRepo(session_factory),
+        commercial_catalog=InMemoryCommercialCatalogPort(),
         course_catalog=InMemoryCourseCatalogPort(),
         user_relations=InMemoryUserRelationsPort(),
         attribution=InMemoryAttributionDiscountPort(),

@@ -18,6 +18,7 @@ class PaymentIntentModel(Base):
     payment_intent_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     parent_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     student_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    offer_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     course_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     attribution_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(
@@ -66,6 +67,7 @@ class CourseAccessGrantModel(Base):
     payment_intent_id: Mapped[str] = mapped_column(
         String(64), nullable=False, unique=True, index=True
     )
+    offer_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     course_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     student_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, index=True)

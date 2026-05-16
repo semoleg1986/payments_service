@@ -23,6 +23,9 @@ class Settings:
     service_token: str
     default_currency: str
     integrations_use_inmemory: bool
+    commercial_catalog_service_base_url: str
+    commercial_catalog_service_token: str
+    commercial_catalog_service_timeout_seconds: float
     course_service_base_url: str
     course_service_token: str
     course_service_timeout_seconds: float
@@ -65,6 +68,17 @@ class Settings:
                 "PAYMENTS_INTEGRATIONS_USE_INMEMORY", "1"
             )
             == "1",
+            commercial_catalog_service_base_url=os.getenv(
+                "PAYMENTS_COMMERCIAL_CATALOG_SERVICE_BASE_URL",
+                "http://localhost:8007",
+            ),
+            commercial_catalog_service_token=os.getenv(
+                "PAYMENTS_COMMERCIAL_CATALOG_SERVICE_TOKEN",
+                "dev-service-token",
+            ),
+            commercial_catalog_service_timeout_seconds=float(
+                os.getenv("PAYMENTS_COMMERCIAL_CATALOG_SERVICE_TIMEOUT_SECONDS", "2")
+            ),
             course_service_base_url=os.getenv(
                 "PAYMENTS_COURSE_SERVICE_BASE_URL", "http://localhost:8001"
             ),

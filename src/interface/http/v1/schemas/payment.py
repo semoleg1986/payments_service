@@ -13,7 +13,7 @@ class CreatePaymentIntentRequest(BaseModel):
     payment_intent_id: str | None = None
     parent_id: str
     student_id: str
-    course_id: str
+    offer_id: str
     attribution_token: str | None = None
     bonus_amount: int | None = Field(default=None, ge=0)
     idempotency_key: str | None = None
@@ -37,6 +37,7 @@ class PaymentIntentResponse(BaseModel):
     payment_intent_id: str
     parent_id: str
     student_id: str
+    offer_id: str
     course_id: str
     status: str
     base_price: float

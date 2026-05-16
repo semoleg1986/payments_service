@@ -10,6 +10,9 @@ from src.infrastructure.integrations.http.attribution_discount import (
     HttpAttributionDiscountPort,
 )
 from src.infrastructure.integrations.http.bonus_wallet import HttpBonusWalletPort
+from src.infrastructure.integrations.http.commercial_catalog import (
+    HttpCommercialCatalogPort,
+)
 from src.infrastructure.integrations.http.course_access_sync import (
     HttpCourseAccessSyncPort,
 )
@@ -30,6 +33,71 @@ class _FakeResponse:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         return None
+
+
+def test_http_commercial_catalog_parses_offer_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fake_urlopen(request, timeout: float = 2.0):  # noqa: ANN001
+        return _FakeResponse(
+            {
+                "offer_id": "course-42-standard",
+                "course_id": "course-42",
+                "is_active": True,
+                "price": {
+                    "currency": "USD",
+                    "list_price": 2200,
+                    "sale_price": 1990,
+                },
+            }
+        )
+
+    monkeypatch.setattr(
+        "src.infrastructure.integrations.http.commercial_catalog.urlopen",
+        _fake_urlopen,
+    )
+    adapter = HttpCommercialCatalogPort(
+        base_url="http://commercial-catalog-service:8007",
+        service_token="token",
+        timeout_seconds=2.0,
+    )
+
+    snapshot = adapter.get_offer("course-42-standard")
+    assert snapshot is not None
+    assert snapshot.offer_id == "course-42-standard"
+    assert snapshot.course_id == "course-42"
+    assert snapshot.price == 1990.0
+    assert snapshot.currency == "USD"
+
+
+def test_http_commercial_catalog_returns_none_for_inactive_offer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fake_urlopen(request, timeout: float = 2.0):  # noqa: ANN001
+        return _FakeResponse(
+            {
+                "offer_id": "course-42-standard",
+                "course_id": "course-42",
+                "is_active": False,
+                "price": {
+                    "currency": "USD",
+                    "list_price": 2200,
+                    "sale_price": 1990,
+                },
+            }
+        )
+
+    monkeypatch.setattr(
+        "src.infrastructure.integrations.http.commercial_catalog.urlopen",
+        _fake_urlopen,
+    )
+    adapter = HttpCommercialCatalogPort(
+        base_url="http://commercial-catalog-service:8007",
+        service_token="token",
+        timeout_seconds=2.0,
+    )
+
+    assert adapter.get_offer("course-42-standard") is None
 
 
 def test_http_course_catalog_parses_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:

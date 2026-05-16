@@ -28,6 +28,7 @@ def _approved_intent() -> PaymentIntent:
         context=PaymentContext(
             parent_id="parent-1",
             student_id="student-1",
+            offer_id="course-1-standard",
             course_id="course-1",
             idempotency_key="idem-100",
         ),
@@ -51,6 +52,7 @@ def test_create_from_approved_intent_activates_access() -> None:
     )
 
     assert grant.status == AccessStatus.ACTIVE
+    assert grant.offer_id == "course-1-standard"
     assert grant.subject.course_id == "course-1"
     assert grant.subject.student_id == "student-1"
     assert grant.meta.version == 2

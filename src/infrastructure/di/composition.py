@@ -27,6 +27,9 @@ from src.infrastructure.integrations.http.attribution_discount import (
     HttpAttributionDiscountPort,
 )
 from src.infrastructure.integrations.http.bonus_wallet import HttpBonusWalletPort
+from src.infrastructure.integrations.http.commercial_catalog import (
+    HttpCommercialCatalogPort,
+)
 from src.infrastructure.integrations.http.course_access_sync import (
     HttpCourseAccessSyncPort,
 )
@@ -37,6 +40,9 @@ from src.infrastructure.integrations.in_memory.attribution_discount import (
 )
 from src.infrastructure.integrations.in_memory.bonus_wallet import (
     InMemoryBonusWalletPort,
+)
+from src.infrastructure.integrations.in_memory.commercial_catalog import (
+    InMemoryCommercialCatalogPort,
 )
 from src.infrastructure.integrations.in_memory.course_access_sync import (
     InMemoryCourseAccessSyncPort,
@@ -111,12 +117,18 @@ def build_runtime() -> RuntimeContainer:
             return SqlAlchemyUnitOfWork(session_factory)
 
     if settings.integrations_use_inmemory:
+        commercial_catalog = InMemoryCommercialCatalogPort()
         course_catalog = InMemoryCourseCatalogPort()
         user_relations = InMemoryUserRelationsPort()
         attribution = InMemoryAttributionDiscountPort()
         bonus_wallet = InMemoryBonusWalletPort()
         course_access_sync = InMemoryCourseAccessSyncPort()
     else:
+        commercial_catalog = HttpCommercialCatalogPort(
+            base_url=settings.commercial_catalog_service_base_url,
+            service_token=settings.commercial_catalog_service_token,
+            timeout_seconds=settings.commercial_catalog_service_timeout_seconds,
+        )
         course_catalog = HttpCourseCatalogPort(
             base_url=settings.course_service_base_url,
             service_token=settings.course_service_token,
@@ -146,6 +158,7 @@ def build_runtime() -> RuntimeContainer:
     facade = PaymentApplicationFacade(
         payment_repo=payment_repo,
         access_repo=access_repo,
+        commercial_catalog=commercial_catalog,
         course_catalog=course_catalog,
         user_relations=user_relations,
         attribution=attribution,

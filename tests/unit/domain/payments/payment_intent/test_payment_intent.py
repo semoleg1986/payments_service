@@ -27,6 +27,7 @@ def _make_intent() -> PaymentIntent:
         context=PaymentContext(
             parent_id="parent-1",
             student_id="student-1",
+            offer_id="course-1-standard",
             course_id="course-1",
             idempotency_key="idem-1",
         ),

@@ -68,6 +68,7 @@ class PaymentIntent:
                 payment_intent_id=payment_intent_id,
                 parent_id=context.parent_id,
                 student_id=context.student_id,
+                offer_id=context.offer_id,
                 course_id=context.course_id,
                 occurred_at=created_at,
             )

@@ -46,7 +46,7 @@ def test_create_and_approve_payment_happy_path() -> None:
             payment_intent_id="",
             parent_id="parent-1",
             student_id="student-1",
-            course_id="course-1",
+            offer_id="course-1-standard",
             attribution_token="promo10-campaign",
             bonus_amount=None,
             idempotency_key="idem-101",
@@ -55,6 +55,8 @@ def test_create_and_approve_payment_happy_path() -> None:
         )
     )
     assert payment.status == "pending"
+    assert payment.offer_id == "course-1-standard"
+    assert payment.course_id == "course-1"
     assert payment.final_price == 108.0
 
     grant = facade.approve_payment_intent(
@@ -66,6 +68,7 @@ def test_create_and_approve_payment_happy_path() -> None:
         )
     )
     assert grant.status == "active"
+    assert grant.offer_id == "course-1-standard"
     assert grant.student_id == "student-1"
 
 
@@ -78,7 +81,7 @@ def test_admin_can_create_payment_intent_for_parent() -> None:
             payment_intent_id="",
             parent_id="parent-1",
             student_id="student-1",
-            course_id="course-1",
+            offer_id="course-1-standard",
             attribution_token=None,
             bonus_amount=None,
             idempotency_key="idem-admin-201",
@@ -89,6 +92,7 @@ def test_admin_can_create_payment_intent_for_parent() -> None:
 
     assert payment.status == "pending"
     assert payment.parent_id == "parent-1"
+    assert payment.offer_id == "course-1-standard"
 
 
 def test_denied_admin_approve_attempt_is_retained_as_audit_evidence() -> None:
@@ -100,7 +104,7 @@ def test_denied_admin_approve_attempt_is_retained_as_audit_evidence() -> None:
             payment_intent_id="",
             parent_id="parent-1",
             student_id="student-1",
-            course_id="course-1",
+            offer_id="course-1-standard",
             attribution_token=None,
             bonus_amount=None,
             idempotency_key="idem-denied-approve-1",
@@ -146,7 +150,7 @@ def test_approve_persists_pending_outbox_when_side_effect_fails() -> None:
             payment_intent_id="",
             parent_id="parent-1",
             student_id="student-1",
-            course_id="course-1",
+            offer_id="course-1-standard",
             attribution_token=None,
             bonus_amount=12,
             idempotency_key="idem-outbox-failure-1",
@@ -189,7 +193,7 @@ def test_dispatch_pending_side_effects_retries_and_marks_processed() -> None:
             payment_intent_id="",
             parent_id="parent-1",
             student_id="student-1",
-            course_id="course-1",
+            offer_id="course-1-standard",
             attribution_token=None,
             bonus_amount=0,
             idempotency_key="idem-outbox-retry-1",

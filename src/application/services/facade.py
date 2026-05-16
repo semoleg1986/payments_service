@@ -24,6 +24,7 @@ from src.application.contracts.ports import (
     BonusQuoteSnapshot,
     BonusWalletPort,
     Clock,
+    CommercialCatalogPort,
     CourseAccessGrantRepositoryPort,
     CourseAccessSyncPort,
     CourseCatalogPort,
@@ -65,6 +66,7 @@ class PaymentApplicationFacade:
 
     payment_repo: PaymentIntentRepositoryPort
     access_repo: CourseAccessGrantRepositoryPort
+    commercial_catalog: CommercialCatalogPort
     course_catalog: CourseCatalogPort
     user_relations: UserRelationsPort
     attribution: AttributionDiscountPort
@@ -105,9 +107,13 @@ class PaymentApplicationFacade:
             if existing is not None:
                 return self._to_payment_view(existing)
 
-        course = self.course_catalog.get_course(command.course_id)
+        offer = self.commercial_catalog.get_offer(command.offer_id)
+        if offer is None:
+            raise NotFoundError("Offer не найден.")
+
+        course = self.course_catalog.get_course(offer.course_id)
         if course is None:
-            raise NotFoundError("Курс не найден.")
+            raise NotFoundError("Курс для offer не найден.")
 
         effective_payment_intent_id = (
             command.payment_intent_id or self.id_generator.new_id()
@@ -115,7 +121,7 @@ class PaymentApplicationFacade:
 
         discount_snapshot = self.attribution.resolve_discount(
             attribution_token=command.attribution_token,
-            course_id=command.course_id,
+            course_id=offer.course_id,
             parent_id=command.parent_id,
         )
         bonus_snapshot = self._resolve_bonus_quote(
@@ -129,12 +135,13 @@ class PaymentApplicationFacade:
             context=PaymentContext(
                 parent_id=command.parent_id,
                 student_id=command.student_id,
-                course_id=command.course_id,
+                offer_id=offer.offer_id,
+                course_id=offer.course_id,
                 attribution_token=command.attribution_token,
                 bonus_amount=bonus_snapshot.allowed_amount,
                 idempotency_key=command.idempotency_key,
             ),
-            base_price=Money(amount=course.price, currency=course.currency),
+            base_price=Money(amount=offer.price, currency=offer.currency),
             discount=Discount(
                 kind=discount_snapshot.kind, value=discount_snapshot.value
             ),
@@ -338,6 +345,7 @@ class PaymentApplicationFacade:
             payment_intent_id=intent.payment_intent_id,
             parent_id=intent.context.parent_id,
             student_id=intent.context.student_id,
+            offer_id=intent.context.offer_id,
             course_id=intent.context.course_id,
             status=intent.status.value,
             base_price=float(intent.base_price.amount),
@@ -355,6 +363,7 @@ class PaymentApplicationFacade:
         return CourseAccessGrantView(
             access_grant_id=grant.access_grant_id,
             payment_intent_id=grant.payment_intent_id,
+            offer_id=grant.offer_id,
             course_id=grant.subject.course_id,
             student_id=grant.subject.student_id,
             status=grant.status.value,

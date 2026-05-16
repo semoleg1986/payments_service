@@ -78,6 +78,7 @@ class SqlAlchemyPaymentIntentRepository:
     def _fill_model(model: PaymentIntentModel, intent: PaymentIntent) -> None:
         model.parent_id = intent.context.parent_id
         model.student_id = intent.context.student_id
+        model.offer_id = intent.context.offer_id
         model.course_id = intent.context.course_id
         model.attribution_token = intent.context.attribution_token
         model.idempotency_key = intent.context.idempotency_key
@@ -109,6 +110,7 @@ class SqlAlchemyPaymentIntentRepository:
             context=PaymentContext(
                 parent_id=model.parent_id,
                 student_id=model.student_id,
+                offer_id=model.offer_id,
                 course_id=model.course_id,
                 attribution_token=model.attribution_token,
                 bonus_amount=int(model.bonus_amount),

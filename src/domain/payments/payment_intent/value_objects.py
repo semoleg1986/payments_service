@@ -64,6 +64,7 @@ class PaymentContext:
 
     parent_id: str
     student_id: str
+    offer_id: str
     course_id: str
     attribution_token: str | None = None
     bonus_amount: int = 0
@@ -75,6 +76,8 @@ class PaymentContext:
             raise InvariantViolationError("parent_id обязателен.")
         if not self.student_id.strip():
             raise InvariantViolationError("student_id обязателен.")
+        if not self.offer_id.strip():
+            raise InvariantViolationError("offer_id обязателен.")
         if not self.course_id.strip():
             raise InvariantViolationError("course_id обязателен.")
         if self.bonus_amount < 0:

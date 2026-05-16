@@ -26,6 +26,7 @@ class PaymentIntentView:
     payment_intent_id: str
     parent_id: str
     student_id: str
+    offer_id: str
     course_id: str
     status: str
     base_price: float
@@ -44,6 +45,7 @@ class CourseAccessGrantView:
 
     access_grant_id: str
     payment_intent_id: str
+    offer_id: str
     course_id: str
     student_id: str
     status: str

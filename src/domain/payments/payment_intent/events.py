@@ -13,6 +13,7 @@ class PaymentIntentCreated:
     payment_intent_id: str
     parent_id: str
     student_id: str
+    offer_id: str
     course_id: str
     occurred_at: datetime
 

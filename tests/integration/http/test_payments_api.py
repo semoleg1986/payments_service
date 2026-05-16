@@ -38,7 +38,7 @@ def test_full_flow_create_approve_and_internal_access_check() -> None:
         json={
             "parent_id": "parent-1",
             "student_id": "student-1",
-            "course_id": "course-1",
+            "offer_id": "course-1-standard",
             "idempotency_key": "idem-http-1",
             "attribution_token": "promo10-abc",
             "bonus_amount": 15,
@@ -54,6 +54,8 @@ def test_full_flow_create_approve_and_internal_access_check() -> None:
         == "camera=(), microphone=(), geolocation=()"
     )
     payment_id = create_resp.json()["payment_intent_id"]
+    assert create_resp.json()["offer_id"] == "course-1-standard"
+    assert create_resp.json()["course_id"] == "course-1"
     assert create_resp.json()["bonus_amount"] == 15
     assert create_resp.json()["final_price"] == 93.0
 
@@ -63,6 +65,7 @@ def test_full_flow_create_approve_and_internal_access_check() -> None:
         json={},
     )
     assert approve_resp.status_code == 200
+    assert approve_resp.json()["offer_id"] == "course-1-standard"
     assert approve_resp.json()["status"] == "active"
 
     internal_resp = client.get(
@@ -142,7 +145,7 @@ def test_denied_admin_http_attempt_is_retained_as_audit_evidence() -> None:
         json={
             "parent_id": "parent-1",
             "student_id": "student-1",
-            "course_id": "course-1",
+            "offer_id": "course-1-standard",
             "idempotency_key": "idem-http-denied-1",
         },
     )
@@ -186,7 +189,7 @@ def test_parent_create_payment_intent_is_rate_limited(monkeypatch) -> None:
         json={
             "parent_id": "parent-1",
             "student_id": "student-1",
-            "course_id": "course-1",
+            "offer_id": "course-1-standard",
             "idempotency_key": "idem-http-rl-parent-1",
         },
     )
@@ -202,7 +205,7 @@ def test_parent_create_payment_intent_is_rate_limited(monkeypatch) -> None:
         json={
             "parent_id": "parent-1",
             "student_id": "student-1",
-            "course_id": "course-2",
+            "offer_id": "course-2-standard",
             "idempotency_key": "idem-http-rl-parent-2",
         },
     )
@@ -231,7 +234,7 @@ def test_bonus_amount_is_replayed_by_payment_intent_idempotency() -> None:
         json={
             "parent_id": "parent-1",
             "student_id": "student-1",
-            "course_id": "course-1",
+            "offer_id": "course-1-standard",
             "idempotency_key": "idem-http-bonus-1",
             "bonus_amount": 20,
         },
@@ -244,7 +247,7 @@ def test_bonus_amount_is_replayed_by_payment_intent_idempotency() -> None:
         json={
             "parent_id": "parent-1",
             "student_id": "student-1",
-            "course_id": "course-1",
+            "offer_id": "course-1-standard",
             "idempotency_key": "idem-http-bonus-1",
             "bonus_amount": 20,
         },
@@ -273,7 +276,7 @@ def test_admin_approve_payment_intent_is_rate_limited(monkeypatch) -> None:
         json={
             "parent_id": "parent-1",
             "student_id": "student-1",
-            "course_id": "course-1",
+            "offer_id": "course-1-standard",
             "idempotency_key": "idem-http-rl-approve-1",
         },
     )
@@ -283,7 +286,7 @@ def test_admin_approve_payment_intent_is_rate_limited(monkeypatch) -> None:
         json={
             "parent_id": "parent-1",
             "student_id": "student-2",
-            "course_id": "course-2",
+            "offer_id": "course-2-standard",
             "idempotency_key": "idem-http-rl-approve-2",
         },
     )

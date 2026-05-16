@@ -122,6 +122,23 @@ class CourseCatalogPort(Protocol):
         """Возвращает данные курса по id или None."""
 
 
+@dataclass(frozen=True, slots=True)
+class OfferSnapshot:
+    """Минимальный коммерческий снимок offer для checkout."""
+
+    offer_id: str
+    course_id: str
+    price: float
+    currency: str
+
+
+class CommercialCatalogPort(Protocol):
+    """Порт чтения коммерческих offer из commercial_catalog_service."""
+
+    def get_offer(self, offer_id: str) -> OfferSnapshot | None:
+        """Возвращает offer snapshot по id или None."""
+
+
 class UserRelationsPort(Protocol):
     """Порт проверки связей parent->student."""
 
