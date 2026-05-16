@@ -5,12 +5,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY requirements.in ./
-RUN pip install --no-cache-dir -r requirements.in
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
 EXPOSE 8004
 
 CMD ["sh", "-c", "alembic upgrade head && uvicorn src.interface.http.main:app --host 0.0.0.0 --port 8004"]
-

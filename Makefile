@@ -5,8 +5,14 @@
 requirements: ## Скомпилировать requirements.in в requirements.txt
 	pip-compile requirements.in
 
-install: requirements ## Установить зависимости
+dev-requirements: ## Скомпилировать requirements-dev.in в requirements-dev.txt
+	pip-compile requirements-dev.in
+
+install: requirements ## Установить runtime-зависимости
 	pip install -r requirements.txt
+
+dev-install: requirements dev-requirements ## Установить dev-зависимости
+	pip install -r requirements-dev.txt
 
 # ========================
 # Test
