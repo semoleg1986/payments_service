@@ -14,9 +14,13 @@ from src.interface.http.wiring import get_access_token_verifier
 class _FakeVerifier:
     def decode_access(self, access_token: str) -> dict[str, str | list[str]]:
         if access_token == "parent-token":
-            return {"sub": "parent-1", "roles": ["parent"]}
+            return {
+                "sub": "account-parent-1",
+                "user_id": "parent-1",
+                "roles": ["parent"],
+            }
         if access_token == "admin-token":
-            return {"sub": "admin-1", "roles": ["admin"]}
+            return {"sub": "admin-1", "user_id": "admin-1", "roles": ["admin"]}
         raise ValueError("bad token")
 
 
