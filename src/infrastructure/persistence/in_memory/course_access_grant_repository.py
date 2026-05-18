@@ -40,5 +40,18 @@ class InMemoryCourseAccessGrantRepository:
         )
         return grant is not None and grant.status == AccessStatus.ACTIVE
 
+    def get_active_by_student_and_course(
+        self,
+        *,
+        course_id: str,
+        student_id: str,
+    ) -> CourseAccessGrant | None:
+        grant = self.find_by_course_and_student(
+            course_id=course_id, student_id=student_id
+        )
+        if grant is None or grant.status != AccessStatus.ACTIVE:
+            return None
+        return grant
+
     def save(self, access_grant: CourseAccessGrant) -> None:
         self._items[access_grant.access_grant_id] = access_grant

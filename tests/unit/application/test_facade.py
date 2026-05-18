@@ -8,6 +8,7 @@ from src.application.contracts.commands import (
     CreatePaymentIntentCommand,
 )
 from src.application.contracts.queries import (
+    GetCheckoutStateQuery,
     GetPaymentIntentQuery,
     ListPaymentIntentsQuery,
 )
@@ -189,6 +190,77 @@ def test_admin_can_get_payment_intent() -> None:
     )
 
     assert result.payment_intent_id == payment.payment_intent_id
+
+
+def test_parent_can_get_checkout_state_for_pending_intent() -> None:
+    runtime = build_runtime()
+    payment = runtime.facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-checkout-state-pending-1",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+
+    result = runtime.facade.get_checkout_state(
+        GetCheckoutStateQuery(
+            actor_id="parent-1",
+            actor_roles=("parent",),
+            student_id="student-1",
+            course_id="course-1",
+        )
+    )
+
+    assert result.checkout_state == "pending_payment"
+    assert result.latest_payment_intent is not None
+    assert result.latest_payment_intent.payment_intent_id == payment.payment_intent_id
+    assert result.access_grant is None
+    assert result.available_actions.can_create_payment_intent is False
+
+
+def test_parent_can_get_checkout_state_for_active_access() -> None:
+    runtime = build_runtime()
+    payment = runtime.facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-checkout-state-access-1",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+    grant = runtime.facade.approve_payment_intent(
+        ApprovePaymentIntentCommand(
+            payment_intent_id=payment.payment_intent_id,
+            admin_id="admin-1",
+            admin_roles=("admin",),
+            access_grant_id="",
+        )
+    )
+
+    result = runtime.facade.get_checkout_state(
+        GetCheckoutStateQuery(
+            actor_id="parent-1",
+            actor_roles=("parent",),
+            student_id="student-1",
+            course_id="course-1",
+        )
+    )
+
+    assert result.checkout_state == "access_granted"
+    assert result.access_grant is not None
+    assert result.access_grant.access_grant_id == grant.access_grant_id
+    assert result.available_actions.can_create_payment_intent is False
 
 
 def test_denied_admin_approve_attempt_is_retained_as_audit_evidence() -> None:

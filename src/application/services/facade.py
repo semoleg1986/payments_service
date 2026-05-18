@@ -14,6 +14,8 @@ from src.application.contracts.commands import (
 )
 from src.application.contracts.facade import (
     AccessCheckView,
+    CheckoutActionsView,
+    CheckoutStateView,
     CourseAccessGrantView,
     PaymentIntentView,
 )
@@ -38,6 +40,7 @@ from src.application.contracts.ports import (
     UserRelationsPort,
 )
 from src.application.contracts.queries import (
+    GetCheckoutStateQuery,
     GetCourseAccessGrantQuery,
     GetPaymentIntentQuery,
     ListPaymentIntentsQuery,
@@ -335,6 +338,91 @@ class PaymentApplicationFacade:
                 offset=query.offset,
             )
         ]
+
+    def get_checkout_state(self, query: GetCheckoutStateQuery) -> CheckoutStateView:
+        """Возвращает checkout-state для parent/student/course."""
+
+        ensure_parent_can_create_intent(query.actor_id, list(query.actor_roles))
+
+        if not self.user_relations.is_parent_of_student(
+            parent_id=query.actor_id,
+            student_id=query.student_id,
+        ):
+            raise AccessDeniedError("parent_id не связан с student_id.")
+
+        course = self.course_catalog.get_course(query.course_id)
+        if course is None:
+            raise NotFoundError("Курс не найден.")
+
+        latest_intent = self.payment_repo.get_latest_by_parent_student_course(
+            parent_id=query.actor_id,
+            student_id=query.student_id,
+            course_id=query.course_id,
+        )
+        active_grant = self.access_repo.get_active_by_student_and_course(
+            course_id=query.course_id,
+            student_id=query.student_id,
+        )
+
+        latest_intent_view = (
+            self._to_payment_view(latest_intent) if latest_intent is not None else None
+        )
+        active_grant_view = (
+            self._to_access_view(active_grant) if active_grant is not None else None
+        )
+
+        if active_grant_view is not None:
+            checkout_state = "access_granted"
+            actions = CheckoutActionsView(
+                can_create_payment_intent=False,
+                can_retry_payment=False,
+            )
+        elif latest_intent_view is None:
+            checkout_state = "idle"
+            actions = CheckoutActionsView(
+                can_create_payment_intent=True,
+                can_retry_payment=False,
+            )
+        elif latest_intent_view.status == PaymentStatus.PENDING.value:
+            checkout_state = "pending_payment"
+            actions = CheckoutActionsView(
+                can_create_payment_intent=False,
+                can_retry_payment=False,
+            )
+        elif latest_intent_view.status == PaymentStatus.APPROVED.value:
+            checkout_state = "payment_approved"
+            actions = CheckoutActionsView(
+                can_create_payment_intent=False,
+                can_retry_payment=False,
+            )
+        elif latest_intent_view.status == PaymentStatus.REJECTED.value:
+            checkout_state = "payment_rejected"
+            actions = CheckoutActionsView(
+                can_create_payment_intent=True,
+                can_retry_payment=True,
+            )
+        elif latest_intent_view.status == PaymentStatus.CANCELLED.value:
+            checkout_state = "payment_cancelled"
+            actions = CheckoutActionsView(
+                can_create_payment_intent=True,
+                can_retry_payment=True,
+            )
+        else:
+            checkout_state = "idle"
+            actions = CheckoutActionsView(
+                can_create_payment_intent=True,
+                can_retry_payment=False,
+            )
+
+        return CheckoutStateView(
+            parent_id=query.actor_id,
+            student_id=query.student_id,
+            course_id=query.course_id,
+            checkout_state=checkout_state,
+            latest_payment_intent=latest_intent_view,
+            access_grant=active_grant_view,
+            available_actions=actions,
+        )
 
     def check_course_access(self, course_id: str, student_id: str) -> AccessCheckView:
         """Проверяет наличие active доступа к курсу."""

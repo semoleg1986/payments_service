@@ -41,3 +41,13 @@ class ListPaymentIntentsQuery:
     status: str | None = None
     limit: int = 50
     offset: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class GetCheckoutStateQuery:
+    """Запрос checkout-state для parent/student/course."""
+
+    actor_id: str
+    actor_roles: tuple[str, ...]
+    student_id: str
+    course_id: str

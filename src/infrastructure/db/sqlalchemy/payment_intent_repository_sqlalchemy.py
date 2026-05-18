@@ -80,6 +80,28 @@ class SqlAlchemyPaymentIntentRepository:
             models = session.scalars(stmt.offset(offset).limit(limit)).all()
             return [self._to_entity(item) for item in models]
 
+    def get_latest_by_parent_student_course(
+        self,
+        *,
+        parent_id: str,
+        student_id: str,
+        course_id: str,
+    ) -> PaymentIntent | None:
+        with self._session() as session:
+            model = session.scalar(
+                select(PaymentIntentModel)
+                .where(
+                    and_(
+                        PaymentIntentModel.parent_id == parent_id,
+                        PaymentIntentModel.student_id == student_id,
+                        PaymentIntentModel.course_id == course_id,
+                    )
+                )
+                .order_by(PaymentIntentModel.created_at.desc())
+                .limit(1)
+            )
+            return self._to_entity(model) if model else None
+
     def save(self, intent: PaymentIntent) -> None:
         with self._session() as session:
             model = session.get(PaymentIntentModel, intent.payment_intent_id)

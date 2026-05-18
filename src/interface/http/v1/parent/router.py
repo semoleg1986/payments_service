@@ -8,6 +8,7 @@ from src.application.contracts import (
     ApplicationFacade,
     CancelPaymentIntentCommand,
     CreatePaymentIntentCommand,
+    GetCheckoutStateQuery,
     GetPaymentIntentQuery,
     ListPaymentsByParentQuery,
 )
@@ -15,6 +16,7 @@ from src.interface.http.common.actor import HttpActor, get_http_actor
 from src.interface.http.common.rate_limit import enforce_parent_create_rate_limit
 from src.interface.http.observability import increment_counter
 from src.interface.http.v1.schemas.payment import (
+    CheckoutStateResponse,
     CreatePaymentIntentRequest,
     PaymentIntentResponse,
 )
@@ -88,6 +90,29 @@ def list_payments_by_parent(
         )
     )
     return [PaymentIntentResponse.model_validate(x) for x in result]
+
+
+@router.get(
+    "/students/{student_id}/courses/{course_id}/checkout-state",
+    response_model=CheckoutStateResponse,
+)
+def get_checkout_state(
+    student_id: str,
+    course_id: str,
+    actor: HttpActor = Depends(get_http_actor),
+    facade: ApplicationFacade = Depends(get_facade),
+) -> CheckoutStateResponse:
+    """Возвращает checkout-state для parent/student/course."""
+
+    result = facade.get_checkout_state(
+        GetCheckoutStateQuery(
+            actor_id=actor.actor_id,
+            actor_roles=actor.roles,
+            student_id=student_id,
+            course_id=course_id,
+        )
+    )
+    return CheckoutStateResponse.model_validate(result)
 
 
 @router.post(

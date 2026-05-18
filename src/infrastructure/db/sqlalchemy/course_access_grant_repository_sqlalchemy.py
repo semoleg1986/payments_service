@@ -75,6 +75,24 @@ class SqlAlchemyCourseAccessGrantRepository:
             )
             return found is not None
 
+    def get_active_by_student_and_course(
+        self,
+        *,
+        course_id: str,
+        student_id: str,
+    ) -> CourseAccessGrant | None:
+        with self._session() as session:
+            model = session.scalar(
+                select(CourseAccessGrantModel).where(
+                    and_(
+                        CourseAccessGrantModel.course_id == course_id,
+                        CourseAccessGrantModel.student_id == student_id,
+                        CourseAccessGrantModel.status == AccessStatus.ACTIVE.value,
+                    )
+                )
+            )
+            return self._to_entity(model) if model else None
+
     def save(self, access_grant: CourseAccessGrant) -> None:
         with self._session() as session:
             model = session.get(CourseAccessGrantModel, access_grant.access_grant_id)

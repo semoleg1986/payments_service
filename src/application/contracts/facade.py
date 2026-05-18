@@ -13,6 +13,7 @@ from .commands import (
     RejectPaymentIntentCommand,
 )
 from .queries import (
+    GetCheckoutStateQuery,
     GetCourseAccessGrantQuery,
     GetPaymentIntentQuery,
     ListPaymentIntentsQuery,
@@ -70,6 +71,27 @@ class AccessCheckView:
     expires_at: datetime | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class CheckoutActionsView:
+    """Разрешенные действия checkout UI."""
+
+    can_create_payment_intent: bool
+    can_retry_payment: bool
+
+
+@dataclass(frozen=True, slots=True)
+class CheckoutStateView:
+    """Read-модель checkout-state для parent UI."""
+
+    parent_id: str
+    student_id: str
+    course_id: str
+    checkout_state: str
+    latest_payment_intent: PaymentIntentView | None
+    access_grant: CourseAccessGrantView | None
+    available_actions: CheckoutActionsView
+
+
 class ApplicationFacade(Protocol):
     """Единая точка входа для interface-слоя."""
 
@@ -110,6 +132,9 @@ class ApplicationFacade(Protocol):
         self, query: ListPaymentIntentsQuery
     ) -> list[PaymentIntentView]:
         """Возвращает список intent-ов для admin read-side."""
+
+    def get_checkout_state(self, query: GetCheckoutStateQuery) -> CheckoutStateView:
+        """Возвращает checkout-state для parent/student/course."""
 
     def check_course_access(self, course_id: str, student_id: str) -> AccessCheckView:
         """Проверяет активный доступ ученика к курсу."""

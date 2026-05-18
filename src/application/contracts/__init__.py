@@ -9,6 +9,8 @@ from .commands import (
 from .facade import (
     AccessCheckView,
     ApplicationFacade,
+    CheckoutActionsView,
+    CheckoutStateView,
     CourseAccessGrantView,
     PaymentIntentView,
 )
@@ -37,6 +39,7 @@ from .ports import (
     UserRelationsPort,
 )
 from .queries import (
+    GetCheckoutStateQuery,
     GetCourseAccessGrantQuery,
     GetPaymentIntentQuery,
     ListPaymentIntentsQuery,
@@ -55,6 +58,8 @@ __all__ = [
     "BonusWalletPort",
     "CancelPaymentIntentCommand",
     "Clock",
+    "CheckoutActionsView",
+    "CheckoutStateView",
     "CommercialCatalogPort",
     "CourseAccessGrantRepositoryPort",
     "CourseAccessGrantView",
@@ -64,6 +69,7 @@ __all__ = [
     "CreatePaymentIntentCommand",
     "DiscountSnapshot",
     "GetCourseAccessGrantQuery",
+    "GetCheckoutStateQuery",
     "GetPaymentIntentQuery",
     "IdGenerator",
     "ListPaymentIntentsQuery",

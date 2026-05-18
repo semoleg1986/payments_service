@@ -6,6 +6,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from src.interface.http.v1.schemas.access import CourseAccessGrantResponse
+
 
 class CreatePaymentIntentRequest(BaseModel):
     """Запрос на создание intent."""
@@ -48,5 +50,28 @@ class PaymentIntentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     version: int
+
+    model_config = {"from_attributes": True}
+
+
+class CheckoutActionsResponse(BaseModel):
+    """Доступные действия для checkout UI."""
+
+    can_create_payment_intent: bool
+    can_retry_payment: bool
+
+    model_config = {"from_attributes": True}
+
+
+class CheckoutStateResponse(BaseModel):
+    """Read model checkout-state для parent UI."""
+
+    parent_id: str
+    student_id: str
+    course_id: str
+    checkout_state: str
+    latest_payment_intent: PaymentIntentResponse | None = None
+    access_grant: CourseAccessGrantResponse | None = None
+    available_actions: CheckoutActionsResponse
 
     model_config = {"from_attributes": True}

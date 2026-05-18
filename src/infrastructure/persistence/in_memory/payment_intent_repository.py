@@ -45,3 +45,22 @@ class InMemoryPaymentIntentRepository:
             items = [x for x in items if x.status.value == status]
         items.sort(key=lambda item: item.meta.created_at, reverse=True)
         return items[offset : offset + limit]
+
+    def get_latest_by_parent_student_course(
+        self,
+        *,
+        parent_id: str,
+        student_id: str,
+        course_id: str,
+    ) -> PaymentIntent | None:
+        items = [
+            intent
+            for intent in self._items.values()
+            if intent.context.parent_id == parent_id
+            and intent.context.student_id == student_id
+            and intent.context.course_id == course_id
+        ]
+        if not items:
+            return None
+        items.sort(key=lambda item: item.meta.created_at, reverse=True)
+        return items[0]

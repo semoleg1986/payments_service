@@ -88,6 +88,15 @@ class PaymentIntentRepositoryPort(Protocol):
     ) -> list[PaymentIntent]:
         """Возвращает список intent-ов с фильтрацией для admin read-side."""
 
+    def get_latest_by_parent_student_course(
+        self,
+        *,
+        parent_id: str,
+        student_id: str,
+        course_id: str,
+    ) -> PaymentIntent | None:
+        """Возвращает последний intent для parent/student/course."""
+
 
 class CourseAccessGrantRepositoryPort(Protocol):
     """Порт репозитория CourseAccessGrant."""
@@ -109,6 +118,14 @@ class CourseAccessGrantRepositoryPort(Protocol):
         student_id: str,
     ) -> CourseAccessGrant | None:
         """Возвращает доступ для пары course/student."""
+
+    def get_active_by_student_and_course(
+        self,
+        *,
+        course_id: str,
+        student_id: str,
+    ) -> CourseAccessGrant | None:
+        """Возвращает active доступ для пары course/student."""
 
     def save(self, access_grant: CourseAccessGrant) -> None:
         """Сохраняет access grant."""
