@@ -1,57 +1,73 @@
 # payments_service
 
-Сервис ручной оплаты родителем и выдачи доступа к курсу после подтверждения админом.
+Payment intent and course access service.
 
-## Быстрый старт
+## Responsibility
 
+`payments_service` owns:
+- parent-created payment intents
+- admin approval and rejection
+- course access grants after approval
+- access checks for downstream consumers
+- outbox/side-effect dispatch for payment lifecycle
+
+Current model: payment confirmation is still admin-driven.
+
+## Local run
+
+### Install
 ```bash
-cp .env.example .env
-docker compose up -d --build
+make install
 ```
 
-Проверка:
+### Run
+```bash
+make run
+```
 
+### Health
 ```bash
 curl -fsS http://127.0.0.1:8004/healthz
 ```
 
-## Миграции
+## Environment
+
+- [payments_service/.env.example](/Users/olegsemenov/Programming/curs/payments_service/.env.example)
+- [payments_service/.env.local.example](/Users/olegsemenov/Programming/curs/payments_service/.env.local.example)
+
+Key variables:
+- `PAYMENTS_DATABASE_URL`
+- `PAYMENTS_AUTH_JWKS_URL`
+- `PAYMENTS_SERVICE_TOKEN`
+- `PAYMENTS_COURSE_SERVICE_BASE_URL`
+- `PAYMENTS_USERS_SERVICE_BASE_URL`
+- `PAYMENTS_ATTR_SERVICE_BASE_URL`
+- `PAYMENTS_INTEGRATIONS_USE_INMEMORY`
+
+## Tests and quality
+
+```bash
+make test
+make test-quick
+make lint
+make format
+```
+
+## Migrations
 
 ```bash
 make migrate
-```
-
-Создать новую миграцию:
-
-```bash
 make makemigration MSG=add_new_fields
 ```
 
-## Локальный запуск без Docker
-
-```bash
-pip install -r requirements.in
-make migrate
-make run
-```
-
 ## Outbox dispatcher
-
-Разовый drain pending outbox-событий:
 
 ```bash
 python -m src.interface.http.main dispatch-outbox --limit 100
 ```
 
-## Переменные окружения
+## Documentation
 
-Ключевые переменные в [.env.example](/Users/olegsemenov/Programming/curs/payments_service/.env.example):
-
-- `PAYMENTS_DATABASE_URL`
-- `PAYMENTS_USE_INMEMORY`
-- `PAYMENTS_AUTH_JWKS_URL` / `PAYMENTS_AUTH_JWKS_JSON`
-- `PAYMENTS_SERVICE_TOKEN`
-- `PAYMENTS_INTEGRATIONS_USE_INMEMORY`
-- `PAYMENTS_COURSE_SERVICE_BASE_URL` / `PAYMENTS_COURSE_SERVICE_TOKEN`
-- `PAYMENTS_USERS_SERVICE_BASE_URL` / `PAYMENTS_USERS_SERVICE_TOKEN`
-- `PAYMENTS_ATTR_SERVICE_BASE_URL` / `PAYMENTS_ATTR_SERVICE_TOKEN`
+- [00-vision.md](/Users/olegsemenov/Programming/curs/payments_service/docs/00-vision.md)
+- [10-integration-contracts.md](/Users/olegsemenov/Programming/curs/payments_service/docs/10-integration-contracts.md)
+- [postgres.md](/Users/olegsemenov/Programming/curs/payments_service/docs/postgres.md)
