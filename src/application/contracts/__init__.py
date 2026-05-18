@@ -39,6 +39,7 @@ from .ports import (
 from .queries import (
     GetCourseAccessGrantQuery,
     GetPaymentIntentQuery,
+    ListPaymentIntentsQuery,
     ListPaymentsByParentQuery,
 )
 
@@ -65,6 +66,7 @@ __all__ = [
     "GetCourseAccessGrantQuery",
     "GetPaymentIntentQuery",
     "IdGenerator",
+    "ListPaymentIntentsQuery",
     "ListPaymentsByParentQuery",
     "OutboxEventRecord",
     "OutboxEventRepositoryPort",

@@ -30,3 +30,14 @@ class ListPaymentsByParentQuery:
     parent_id: str
     actor_id: str
     actor_roles: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ListPaymentIntentsQuery:
+    """Запрос списка intent-ов с административным доступом."""
+
+    actor_id: str
+    actor_roles: tuple[str, ...]
+    status: str | None = None
+    limit: int = 50
+    offset: int = 0

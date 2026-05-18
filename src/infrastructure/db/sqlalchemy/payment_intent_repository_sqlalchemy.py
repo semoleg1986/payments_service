@@ -64,6 +64,22 @@ class SqlAlchemyPaymentIntentRepository:
             ).all()
             return [self._to_entity(item) for item in models]
 
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[PaymentIntent]:
+        with self._session() as session:
+            stmt = select(PaymentIntentModel).order_by(
+                PaymentIntentModel.created_at.desc()
+            )
+            if status is not None:
+                stmt = stmt.where(PaymentIntentModel.status == status)
+            models = session.scalars(stmt.offset(offset).limit(limit)).all()
+            return [self._to_entity(item) for item in models]
+
     def save(self, intent: PaymentIntent) -> None:
         with self._session() as session:
             model = session.get(PaymentIntentModel, intent.payment_intent_id)

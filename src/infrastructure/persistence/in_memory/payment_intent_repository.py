@@ -32,3 +32,16 @@ class InMemoryPaymentIntentRepository:
 
     def list_by_parent(self, parent_id: str) -> list[PaymentIntent]:
         return [x for x in self._items.values() if x.context.parent_id == parent_id]
+
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[PaymentIntent]:
+        items = list(self._items.values())
+        if status is not None:
+            items = [x for x in items if x.status.value == status]
+        items.sort(key=lambda item: item.meta.created_at, reverse=True)
+        return items[offset : offset + limit]

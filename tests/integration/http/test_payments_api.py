@@ -116,6 +116,43 @@ def test_request_id_is_returned_in_error_response() -> None:
     assert resp.json().get("request_id") == "req-fixed-001"
 
 
+def test_admin_can_list_and_get_payment_intents() -> None:
+    wiring._runtime = None  # type: ignore[attr-defined]
+    reset_metrics()
+    reset_rate_limiter()
+    app = create_app()
+    app.dependency_overrides[get_access_token_verifier] = lambda: _FakeVerifier()
+    client = TestClient(app)
+
+    create_resp = client.post(
+        "/v1/parent/payments/intents",
+        headers=_headers("parent-token"),
+        json={
+            "parent_id": "parent-1",
+            "student_id": "student-1",
+            "offer_id": "course-1-standard",
+            "idempotency_key": "idem-http-admin-list-1",
+        },
+    )
+    assert create_resp.status_code == 201
+    payment_id = create_resp.json()["payment_intent_id"]
+
+    list_resp = client.get(
+        "/v1/admin/payments",
+        headers=_headers("admin-token"),
+        params={"status": "pending", "limit": 10, "offset": 0},
+    )
+    assert list_resp.status_code == 200
+    assert any(item["payment_intent_id"] == payment_id for item in list_resp.json())
+
+    get_resp = client.get(
+        f"/v1/admin/payments/{payment_id}",
+        headers=_headers("admin-token"),
+    )
+    assert get_resp.status_code == 200
+    assert get_resp.json()["payment_intent_id"] == payment_id
+
+
 def test_metrics_endpoint_exposes_prometheus_metrics() -> None:
     wiring._runtime = None  # type: ignore[attr-defined]
     reset_metrics()

@@ -23,3 +23,12 @@ class PaymentIntentRepository(Protocol):
 
     def list_by_parent(self, parent_id: str) -> list[PaymentIntent]:
         """Возвращает список intent для parent_id."""
+
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[PaymentIntent]:
+        """Возвращает список intent для admin read-side."""

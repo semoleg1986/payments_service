@@ -15,6 +15,7 @@ from .commands import (
 from .queries import (
     GetCourseAccessGrantQuery,
     GetPaymentIntentQuery,
+    ListPaymentIntentsQuery,
     ListPaymentsByParentQuery,
 )
 
@@ -104,6 +105,11 @@ class ApplicationFacade(Protocol):
         self, query: ListPaymentsByParentQuery
     ) -> list[PaymentIntentView]:
         """Возвращает платежи родителя."""
+
+    def list_payment_intents(
+        self, query: ListPaymentIntentsQuery
+    ) -> list[PaymentIntentView]:
+        """Возвращает список intent-ов для admin read-side."""
 
     def check_course_access(self, course_id: str, student_id: str) -> AccessCheckView:
         """Проверяет активный доступ ученика к курсу."""

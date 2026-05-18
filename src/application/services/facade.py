@@ -40,6 +40,7 @@ from src.application.contracts.ports import (
 from src.application.contracts.queries import (
     GetCourseAccessGrantQuery,
     GetPaymentIntentQuery,
+    ListPaymentIntentsQuery,
     ListPaymentsByParentQuery,
 )
 from src.domain.errors import AccessDeniedError, NotFoundError
@@ -315,6 +316,24 @@ class PaymentApplicationFacade:
         return [
             self._to_payment_view(x)
             for x in self.payment_repo.list_by_parent(query.parent_id)
+        ]
+
+    def list_payment_intents(
+        self,
+        query: ListPaymentIntentsQuery,
+    ) -> list[PaymentIntentView]:
+        """Возвращает список intent-ов для admin queue."""
+
+        if "admin" not in set(query.actor_roles):
+            raise AccessDeniedError("Нет доступа к списку PaymentIntent.")
+
+        return [
+            self._to_payment_view(x)
+            for x in self.payment_repo.list(
+                status=query.status,
+                limit=query.limit,
+                offset=query.offset,
+            )
         ]
 
     def check_course_access(self, course_id: str, student_id: str) -> AccessCheckView:

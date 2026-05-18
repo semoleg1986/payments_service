@@ -79,6 +79,15 @@ class PaymentIntentRepositoryPort(Protocol):
     def list_by_parent(self, parent_id: str) -> list[PaymentIntent]:
         """Возвращает платежи родителя."""
 
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[PaymentIntent]:
+        """Возвращает список intent-ов с фильтрацией для admin read-side."""
+
 
 class CourseAccessGrantRepositoryPort(Protocol):
     """Порт репозитория CourseAccessGrant."""

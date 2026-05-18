@@ -7,6 +7,10 @@ from src.application.contracts.commands import (
     ApprovePaymentIntentCommand,
     CreatePaymentIntentCommand,
 )
+from src.application.contracts.queries import (
+    GetPaymentIntentQuery,
+    ListPaymentIntentsQuery,
+)
 from src.domain.errors import AccessDeniedError
 from src.infrastructure.di.composition import build_runtime
 from src.infrastructure.integrations.in_memory.bonus_wallet import (
@@ -93,6 +97,98 @@ def test_admin_can_create_payment_intent_for_parent() -> None:
     assert payment.status == "pending"
     assert payment.parent_id == "parent-1"
     assert payment.offer_id == "course-1-standard"
+
+
+def test_admin_can_list_payment_intents() -> None:
+    runtime = build_runtime()
+    facade = runtime.facade
+
+    first = facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-admin-list-1",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+    second = facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-2-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-admin-list-2",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+
+    items = facade.list_payment_intents(
+        ListPaymentIntentsQuery(
+            actor_id="admin-1",
+            actor_roles=("admin",),
+            status="pending",
+            limit=10,
+            offset=0,
+        )
+    )
+
+    assert len(items) >= 2
+    assert {item.payment_intent_id for item in items} >= {
+        first.payment_intent_id,
+        second.payment_intent_id,
+    }
+
+
+def test_parent_cannot_list_payment_intents() -> None:
+    runtime = build_runtime()
+
+    try:
+        runtime.facade.list_payment_intents(
+            ListPaymentIntentsQuery(
+                actor_id="parent-1",
+                actor_roles=("parent",),
+                status="pending",
+            )
+        )
+    except AccessDeniedError:
+        pass
+    else:
+        raise AssertionError("Expected AccessDeniedError")
+
+
+def test_admin_can_get_payment_intent() -> None:
+    runtime = build_runtime()
+    payment = runtime.facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-admin-get-1",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+
+    result = runtime.facade.get_payment_intent(
+        GetPaymentIntentQuery(
+            payment_intent_id=payment.payment_intent_id,
+            actor_id="admin-1",
+            actor_roles=("admin",),
+        )
+    )
+
+    assert result.payment_intent_id == payment.payment_intent_id
 
 
 def test_denied_admin_approve_attempt_is_retained_as_audit_evidence() -> None:

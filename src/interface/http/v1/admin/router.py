@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, Request
 from src.application.contracts import (
     ApplicationFacade,
     ApprovePaymentIntentCommand,
+    GetPaymentIntentQuery,
+    ListPaymentIntentsQuery,
     RejectPaymentIntentCommand,
 )
 from src.interface.http.common.actor import HttpActor, get_http_actor
@@ -21,6 +23,46 @@ from src.interface.http.v1.schemas.payment import (
 from src.interface.http.wiring import get_facade
 
 router = APIRouter(prefix="/v1/admin/payments", tags=["admin-payments"])
+
+
+@router.get("", response_model=list[PaymentIntentResponse])
+def list_payment_intents(
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    actor: HttpActor = Depends(get_http_actor),
+    facade: ApplicationFacade = Depends(get_facade),
+) -> list[PaymentIntentResponse]:
+    """Возвращает admin queue intent-ов."""
+
+    items = facade.list_payment_intents(
+        ListPaymentIntentsQuery(
+            actor_id=actor.actor_id,
+            actor_roles=actor.roles,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
+    )
+    return [PaymentIntentResponse.model_validate(item) for item in items]
+
+
+@router.get("/{payment_intent_id}", response_model=PaymentIntentResponse)
+def get_payment_intent(
+    payment_intent_id: str,
+    actor: HttpActor = Depends(get_http_actor),
+    facade: ApplicationFacade = Depends(get_facade),
+) -> PaymentIntentResponse:
+    """Возвращает intent по id для admin read-side."""
+
+    result = facade.get_payment_intent(
+        GetPaymentIntentQuery(
+            payment_intent_id=payment_intent_id,
+            actor_id=actor.actor_id,
+            actor_roles=actor.roles,
+        )
+    )
+    return PaymentIntentResponse.model_validate(result)
 
 
 @router.post(
