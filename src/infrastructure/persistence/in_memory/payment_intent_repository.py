@@ -64,3 +64,19 @@ class InMemoryPaymentIntentRepository:
             return None
         items.sort(key=lambda item: item.meta.created_at, reverse=True)
         return items[0]
+
+    def list_pending_by_student_and_course(
+        self,
+        *,
+        student_id: str,
+        course_id: str,
+    ) -> list[PaymentIntent]:
+        items = [
+            intent
+            for intent in self._items.values()
+            if intent.context.student_id == student_id
+            and intent.context.course_id == course_id
+            and intent.status.value == "pending"
+        ]
+        items.sort(key=lambda item: item.meta.created_at, reverse=True)
+        return items

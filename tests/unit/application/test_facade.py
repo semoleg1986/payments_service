@@ -230,6 +230,56 @@ def test_parent_can_get_checkout_state_for_pending_intent() -> None:
     assert result.available_actions.next_action == "wait_for_approval"
 
 
+def test_create_auto_rejects_older_pending_intent() -> None:
+    runtime = build_runtime()
+    first = runtime.facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-auto-stale-1",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+
+    second = runtime.facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-auto-stale-2",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+
+    first_after = runtime.facade.get_payment_intent(
+        GetPaymentIntentQuery(
+            payment_intent_id=first.payment_intent_id,
+            actor_id="admin-1",
+            actor_roles=("admin",),
+        )
+    )
+    second_after = runtime.facade.get_payment_intent(
+        GetPaymentIntentQuery(
+            payment_intent_id=second.payment_intent_id,
+            actor_id="admin-1",
+            actor_roles=("admin",),
+        )
+    )
+
+    assert first_after.status == "rejected"
+    assert first_after.rejected_reason == "stale_pending_intent"
+    assert second_after.status == "pending"
+
+
 def test_parent_can_get_checkout_state_for_active_access() -> None:
     runtime = build_runtime()
     payment = runtime.facade.create_payment_intent(
@@ -272,6 +322,58 @@ def test_parent_can_get_checkout_state_for_active_access() -> None:
     assert result.access_grant.access_grant_id == grant.access_grant_id
     assert result.available_actions.can_create_payment_intent is False
     assert result.available_actions.next_action == "view_access"
+
+
+def test_create_after_active_access_auto_rejects_new_pending_with_conflict_reason() -> (
+    None
+):
+    runtime = build_runtime()
+    first = runtime.facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-auto-conflict-1",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+    runtime.facade.approve_payment_intent(
+        ApprovePaymentIntentCommand(
+            payment_intent_id=first.payment_intent_id,
+            admin_id="admin-1",
+            admin_roles=("admin",),
+            access_grant_id="",
+        )
+    )
+
+    second = runtime.facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-auto-conflict-2",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+
+    second_after = runtime.facade.get_payment_intent(
+        GetPaymentIntentQuery(
+            payment_intent_id=second.payment_intent_id,
+            actor_id="admin-1",
+            actor_roles=("admin",),
+        )
+    )
+
+    assert second_after.status == "rejected"
+    assert second_after.rejected_reason == "conflict_existing_access"
 
 
 def test_admin_payment_view_marks_conflict_existing_access() -> None:
@@ -319,7 +421,8 @@ def test_admin_payment_view_marks_conflict_existing_access() -> None:
         )
     )
 
-    assert result.review_state == "conflict_existing_access"
+    assert result.review_state == "rejected"
+    assert result.rejected_reason == "conflict_existing_access"
     assert result.recommended_reject_reason == "conflict_existing_access"
 
 

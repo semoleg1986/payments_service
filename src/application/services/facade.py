@@ -65,6 +65,8 @@ from src.domain.payments.payment_intent.value_objects import (
 )
 from src.domain.shared.statuses import AccessStatus, PaymentStatus
 
+AUTO_RECONCILE_ACTOR_ID = "system:auto_reconcile"
+
 
 @dataclass(slots=True)
 class PaymentApplicationFacade:
@@ -157,6 +159,11 @@ class PaymentApplicationFacade:
 
         with self.uow_factory() as uow:
             self.payment_repo.save(intent)
+            self._reconcile_pending_intents_for_student_course(
+                parent_id=command.parent_id,
+                student_id=command.student_id,
+                course_id=offer.course_id,
+            )
             uow.commit()
         return self._to_payment_view(intent)
 
@@ -229,6 +236,11 @@ class PaymentApplicationFacade:
         with self.uow_factory() as uow:
             self.payment_repo.save(intent)
             self.access_repo.save(grant)
+            self._reconcile_pending_intents_for_student_course(
+                parent_id=intent.context.parent_id,
+                student_id=intent.context.student_id,
+                course_id=intent.context.course_id,
+            )
             self._enqueue_approval_side_effects(intent=intent, grant=grant)
             uow.commit()
         self.dispatch_pending_side_effects(aggregate_id=intent.payment_intent_id)
@@ -332,6 +344,29 @@ class PaymentApplicationFacade:
         if "admin" not in set(query.actor_roles):
             raise AccessDeniedError("Нет доступа к списку PaymentIntent.")
 
+        if query.status == PaymentStatus.PENDING.value:
+            raw_items = self.payment_repo.list(
+                status=query.status,
+                limit=query.limit,
+                offset=query.offset,
+            )
+            pairs = {
+                (
+                    item.context.parent_id,
+                    item.context.student_id,
+                    item.context.course_id,
+                )
+                for item in raw_items
+            }
+            with self.uow_factory() as uow:
+                for parent_id, student_id, course_id in pairs:
+                    self._reconcile_pending_intents_for_student_course(
+                        parent_id=parent_id,
+                        student_id=student_id,
+                        course_id=course_id,
+                    )
+                uow.commit()
+
         return [
             self._to_payment_view(x)
             for x in self.payment_repo.list(
@@ -355,6 +390,14 @@ class PaymentApplicationFacade:
         course = self.course_catalog.get_course(query.course_id)
         if course is None:
             raise NotFoundError("Курс не найден.")
+
+        with self.uow_factory() as uow:
+            self._reconcile_pending_intents_for_student_course(
+                parent_id=query.actor_id,
+                student_id=query.student_id,
+                course_id=query.course_id,
+            )
+            uow.commit()
 
         latest_intent = self.payment_repo.get_latest_by_parent_student_course(
             parent_id=query.actor_id,
@@ -530,6 +573,56 @@ class PaymentApplicationFacade:
         if intent.status == PaymentStatus.EXPIRED:
             return ("expired", None)
         return ("ready_for_approval", None)
+
+    def _reconcile_pending_intents_for_student_course(
+        self,
+        *,
+        parent_id: str,
+        student_id: str,
+        course_id: str,
+    ) -> None:
+        pending_items = self.payment_repo.list_pending_by_student_and_course(
+            student_id=student_id,
+            course_id=course_id,
+        )
+        if not pending_items:
+            return
+
+        active_grant = self.access_repo.get_active_by_student_and_course(
+            course_id=course_id,
+            student_id=student_id,
+        )
+        if active_grant is not None:
+            for intent in pending_items:
+                if intent.payment_intent_id == active_grant.payment_intent_id:
+                    continue
+                intent.reject(
+                    admin_id=AUTO_RECONCILE_ACTOR_ID,
+                    rejected_at=self.clock.now(),
+                    reason=PaymentIntentRejectReason.CONFLICT_EXISTING_ACCESS,
+                )
+                self.payment_repo.save(intent)
+            return
+
+        latest_intent = self.payment_repo.get_latest_by_parent_student_course(
+            parent_id=parent_id,
+            student_id=student_id,
+            course_id=course_id,
+        )
+        if latest_intent is None or latest_intent.status != PaymentStatus.PENDING:
+            return
+
+        for intent in pending_items:
+            if intent.context.parent_id != parent_id:
+                continue
+            if intent.payment_intent_id == latest_intent.payment_intent_id:
+                continue
+            intent.reject(
+                admin_id=AUTO_RECONCILE_ACTOR_ID,
+                rejected_at=self.clock.now(),
+                reason=PaymentIntentRejectReason.STALE_PENDING_INTENT,
+            )
+            self.payment_repo.save(intent)
 
     def _to_payment_view(self, intent: PaymentIntent) -> PaymentIntentView:
         review_state, recommended_reject_reason = self._build_review_state(intent)

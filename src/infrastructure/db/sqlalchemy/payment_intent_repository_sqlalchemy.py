@@ -113,6 +113,26 @@ class SqlAlchemyPaymentIntentRepository:
             if get_current_session() is None:
                 session.commit()
 
+    def list_pending_by_student_and_course(
+        self,
+        *,
+        student_id: str,
+        course_id: str,
+    ) -> list[PaymentIntent]:
+        with self._session() as session:
+            models = session.scalars(
+                select(PaymentIntentModel)
+                .where(
+                    and_(
+                        PaymentIntentModel.student_id == student_id,
+                        PaymentIntentModel.course_id == course_id,
+                        PaymentIntentModel.status == PaymentStatus.PENDING.value,
+                    )
+                )
+                .order_by(PaymentIntentModel.created_at.desc())
+            ).all()
+            return [self._to_entity(item) for item in models]
+
     @staticmethod
     def _fill_model(model: PaymentIntentModel, intent: PaymentIntent) -> None:
         model.parent_id = intent.context.parent_id

@@ -241,6 +241,48 @@ def test_admin_can_reject_payment_intent_with_enum_reason() -> None:
     assert reject_resp.json()["review_state"] == "rejected"
 
 
+def test_create_auto_rejects_older_pending_intent_for_same_checkout_context() -> None:
+    wiring._runtime = None  # type: ignore[attr-defined]
+    reset_metrics()
+    reset_rate_limiter()
+    app = create_app()
+    app.dependency_overrides[get_access_token_verifier] = lambda: _FakeVerifier()
+    client = TestClient(app)
+
+    first_resp = client.post(
+        "/v1/parent/payments/intents",
+        headers=_headers("parent-token"),
+        json={
+            "parent_id": "parent-1",
+            "student_id": "student-1",
+            "offer_id": "course-1-standard",
+            "idempotency_key": "idem-http-auto-stale-1",
+        },
+    )
+    assert first_resp.status_code == 201
+    first_id = first_resp.json()["payment_intent_id"]
+
+    second_resp = client.post(
+        "/v1/parent/payments/intents",
+        headers=_headers("parent-token"),
+        json={
+            "parent_id": "parent-1",
+            "student_id": "student-1",
+            "offer_id": "course-1-standard",
+            "idempotency_key": "idem-http-auto-stale-2",
+        },
+    )
+    assert second_resp.status_code == 201
+
+    first_get = client.get(
+        f"/v1/admin/payments/{first_id}",
+        headers=_headers("admin-token"),
+    )
+    assert first_get.status_code == 200
+    assert first_get.json()["status"] == "rejected"
+    assert first_get.json()["rejected_reason"] == "stale_pending_intent"
+
+
 def test_metrics_endpoint_exposes_prometheus_metrics() -> None:
     wiring._runtime = None  # type: ignore[attr-defined]
     reset_metrics()

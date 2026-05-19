@@ -32,3 +32,11 @@ class PaymentIntentRepository(Protocol):
         offset: int = 0,
     ) -> list[PaymentIntent]:
         """Возвращает список intent для admin read-side."""
+
+    def list_pending_by_student_and_course(
+        self,
+        *,
+        student_id: str,
+        course_id: str,
+    ) -> list[PaymentIntent]:
+        """Возвращает pending intents для student/course."""

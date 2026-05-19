@@ -97,6 +97,14 @@ class PaymentIntentRepositoryPort(Protocol):
     ) -> PaymentIntent | None:
         """Возвращает последний intent для parent/student/course."""
 
+    def list_pending_by_student_and_course(
+        self,
+        *,
+        student_id: str,
+        course_id: str,
+    ) -> list[PaymentIntent]:
+        """Возвращает pending intents для student/course."""
+
 
 class CourseAccessGrantRepositoryPort(Protocol):
     """Порт репозитория CourseAccessGrant."""
