@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from src.domain.payments.payment_intent.value_objects import PaymentIntentRejectReason
+
 
 @dataclass(frozen=True, slots=True)
 class CreatePaymentIntentCommand:
@@ -39,7 +41,7 @@ class RejectPaymentIntentCommand:
     payment_intent_id: str
     admin_id: str
     admin_roles: tuple[str, ...]
-    reason: str | None = None
+    reason: PaymentIntentRejectReason | None = None
     request_id: str | None = None
     correlation_id: str | None = None
 

@@ -36,6 +36,9 @@ class PaymentIntentView:
     bonus_amount: int
     currency: str
     expires_at: datetime | None
+    rejected_reason: str | None
+    review_state: str
+    recommended_reject_reason: str | None
     created_at: datetime
     updated_at: datetime
     version: int

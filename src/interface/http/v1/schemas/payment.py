@@ -6,6 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from src.domain.payments.payment_intent.value_objects import PaymentIntentRejectReason
 from src.interface.http.v1.schemas.access import CourseAccessGrantResponse
 
 
@@ -30,7 +31,7 @@ class ApprovePaymentIntentRequest(BaseModel):
 class RejectPaymentIntentRequest(BaseModel):
     """Запрос на отклонение intent."""
 
-    reason: str | None = Field(default=None, max_length=500)
+    reason: PaymentIntentRejectReason | None = None
 
 
 class PaymentIntentResponse(BaseModel):
@@ -47,6 +48,9 @@ class PaymentIntentResponse(BaseModel):
     bonus_amount: int
     currency: str
     expires_at: datetime | None = None
+    rejected_reason: str | None = None
+    review_state: str
+    recommended_reject_reason: str | None = None
     created_at: datetime
     updated_at: datetime
     version: int

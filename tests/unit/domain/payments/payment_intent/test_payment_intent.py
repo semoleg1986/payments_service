@@ -12,6 +12,7 @@ from src.domain.payments.payment_intent.value_objects import (
     Discount,
     Money,
     PaymentContext,
+    PaymentIntentRejectReason,
 )
 from src.domain.shared.statuses import PaymentStatus
 
@@ -64,6 +65,30 @@ def test_reject_only_pending() -> None:
 
     with pytest.raises(InvariantViolationError):
         intent.reject(admin_id="admin-2", rejected_at=_now(), reason="bad docs")
+
+
+def test_reject_persists_normalized_reason() -> None:
+    intent = _make_intent()
+
+    intent.reject(
+        admin_id="admin-1",
+        rejected_at=_now(),
+        reason=PaymentIntentRejectReason.CONFLICT_EXISTING_ACCESS,
+    )
+
+    assert intent.status == PaymentStatus.REJECTED
+    assert intent.rejected_reason == PaymentIntentRejectReason.CONFLICT_EXISTING_ACCESS
+
+
+def test_reject_with_invalid_reason_is_rejected() -> None:
+    intent = _make_intent()
+
+    with pytest.raises(InvariantViolationError):
+        intent.reject(
+            admin_id="admin-1",
+            rejected_at=_now(),
+            reason="bad docs",
+        )
 
 
 def test_cancel_only_by_parent() -> None:

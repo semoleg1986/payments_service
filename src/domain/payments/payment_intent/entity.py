@@ -10,7 +10,7 @@ from src.domain.shared.entity import EntityMeta
 from src.domain.shared.statuses import PaymentStatus
 
 from .events import PaymentIntentApproved, PaymentIntentCreated, PaymentIntentRejected
-from .value_objects import Discount, Money, PaymentContext
+from .value_objects import Discount, Money, PaymentContext, PaymentIntentRejectReason
 
 
 @dataclass(slots=True)
@@ -24,7 +24,7 @@ class PaymentIntent:
     final_price: Money
     status: PaymentStatus
     meta: EntityMeta
-    rejected_reason: str | None = None
+    rejected_reason: PaymentIntentRejectReason | None = None
     approved_at: datetime | None = None
     approved_by: str | None = None
     rejected_at: datetime | None = None
@@ -93,14 +93,21 @@ class PaymentIntent:
         )
 
     def reject(
-        self, admin_id: str, rejected_at: datetime, reason: str | None = None
+        self,
+        admin_id: str,
+        rejected_at: datetime,
+        reason: PaymentIntentRejectReason | str | None = None,
     ) -> None:
         """Отклоняет заявку и переводит её в rejected."""
 
         if self.status != PaymentStatus.PENDING:
             raise InvariantViolationError("Отклонить можно только pending intent.")
         self.status = PaymentStatus.REJECTED
-        self.rejected_reason = reason.strip() if reason else None
+        self.rejected_reason = (
+            reason
+            if isinstance(reason, PaymentIntentRejectReason)
+            else PaymentIntentRejectReason.normalize(reason)
+        )
         self.rejected_at = rejected_at
         self.rejected_by = admin_id
         self.meta.touch(at=rejected_at, actor_id=admin_id)
@@ -108,7 +115,7 @@ class PaymentIntent:
             PaymentIntentRejected(
                 payment_intent_id=self.payment_intent_id,
                 rejected_by=admin_id,
-                reason=self.rejected_reason,
+                reason=self.rejected_reason.value if self.rejected_reason else None,
                 occurred_at=rejected_at,
             )
         )

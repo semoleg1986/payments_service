@@ -61,6 +61,7 @@ from src.domain.payments.payment_intent.value_objects import (
     Discount,
     Money,
     PaymentContext,
+    PaymentIntentRejectReason,
 )
 from src.domain.shared.statuses import AccessStatus, PaymentStatus
 
@@ -487,8 +488,51 @@ class PaymentApplicationFacade:
             expires_at=grant.expires_at,
         )
 
-    @staticmethod
-    def _to_payment_view(intent: PaymentIntent) -> PaymentIntentView:
+    def _build_review_state(
+        self, intent: PaymentIntent
+    ) -> tuple[str, PaymentIntentRejectReason | None]:
+        if intent.status == PaymentStatus.PENDING:
+            active_grant = self.access_repo.get_active_by_student_and_course(
+                course_id=intent.context.course_id,
+                student_id=intent.context.student_id,
+            )
+            if (
+                active_grant is not None
+                and active_grant.payment_intent_id != intent.payment_intent_id
+            ):
+                return (
+                    "conflict_existing_access",
+                    PaymentIntentRejectReason.CONFLICT_EXISTING_ACCESS,
+                )
+
+            latest_intent = self.payment_repo.get_latest_by_parent_student_course(
+                parent_id=intent.context.parent_id,
+                student_id=intent.context.student_id,
+                course_id=intent.context.course_id,
+            )
+            if (
+                latest_intent is not None
+                and latest_intent.payment_intent_id != intent.payment_intent_id
+            ):
+                return (
+                    "stale_pending_intent",
+                    PaymentIntentRejectReason.STALE_PENDING_INTENT,
+                )
+
+            return ("ready_for_approval", None)
+
+        if intent.status == PaymentStatus.APPROVED:
+            return ("approved", None)
+        if intent.status == PaymentStatus.REJECTED:
+            return ("rejected", intent.rejected_reason)
+        if intent.status == PaymentStatus.CANCELLED:
+            return ("cancelled", None)
+        if intent.status == PaymentStatus.EXPIRED:
+            return ("expired", None)
+        return ("ready_for_approval", None)
+
+    def _to_payment_view(self, intent: PaymentIntent) -> PaymentIntentView:
+        review_state, recommended_reject_reason = self._build_review_state(intent)
         return PaymentIntentView(
             payment_intent_id=intent.payment_intent_id,
             parent_id=intent.context.parent_id,
@@ -501,6 +545,17 @@ class PaymentApplicationFacade:
             bonus_amount=int(intent.context.bonus_amount),
             currency=intent.final_price.currency,
             expires_at=intent.context.expires_at,
+            rejected_reason=(
+                intent.rejected_reason.value
+                if intent.rejected_reason is not None
+                else None
+            ),
+            review_state=review_state,
+            recommended_reject_reason=(
+                recommended_reject_reason.value
+                if recommended_reject_reason is not None
+                else None
+            ),
             created_at=intent.meta.created_at,
             updated_at=intent.meta.updated_at,
             version=intent.meta.version,

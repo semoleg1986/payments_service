@@ -12,6 +12,7 @@ from src.domain.payments.payment_intent.value_objects import (
     Discount,
     Money,
     PaymentContext,
+    PaymentIntentRejectReason,
 )
 from src.domain.shared.entity import EntityMeta
 from src.domain.shared.statuses import PaymentStatus
@@ -128,7 +129,9 @@ class SqlAlchemyPaymentIntentRepository:
         model.currency = intent.final_price.currency
         model.discount_kind = intent.discount.kind
         model.discount_value = float(intent.discount.value)
-        model.rejected_reason = intent.rejected_reason
+        model.rejected_reason = (
+            intent.rejected_reason.value if intent.rejected_reason is not None else None
+        )
         model.approved_at = intent.approved_at
         model.approved_by = intent.approved_by
         model.rejected_at = intent.rejected_at
@@ -172,7 +175,11 @@ class SqlAlchemyPaymentIntentRepository:
                 archived_at=model.archived_at,
                 archived_by=model.archived_by,
             ),
-            rejected_reason=model.rejected_reason,
+            rejected_reason=(
+                PaymentIntentRejectReason(model.rejected_reason)
+                if model.rejected_reason
+                else None
+            ),
             approved_at=model.approved_at,
             approved_by=model.approved_by,
             rejected_at=model.rejected_at,

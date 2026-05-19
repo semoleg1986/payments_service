@@ -5,10 +5,37 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
 from src.domain.errors import InvariantViolationError
 
 _CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
+
+
+class PaymentIntentRejectReason(StrEnum):
+    """Нормализованные причины admin reject."""
+
+    ADMIN_DECLINED = "admin_declined"
+    PAYMENT_VERIFICATION_FAILED = "payment_verification_failed"
+    DUPLICATE_PAYMENT_ATTEMPT = "duplicate_payment_attempt"
+    STALE_PENDING_INTENT = "stale_pending_intent"
+    CONFLICT_EXISTING_ACCESS = "conflict_existing_access"
+
+    @classmethod
+    def normalize(cls, value: str | None) -> "PaymentIntentRejectReason | None":
+        if value is None:
+            return None
+
+        candidate = value.strip()
+        if not candidate:
+            return None
+
+        try:
+            return cls(candidate)
+        except ValueError as exc:
+            raise InvariantViolationError(
+                "Недопустимая причина reject payment intent."
+            ) from exc
 
 
 @dataclass(frozen=True, slots=True)

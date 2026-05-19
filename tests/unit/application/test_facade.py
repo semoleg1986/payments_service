@@ -6,6 +6,7 @@ from src.application.contracts import OutboxEventStatus, OutboxEventType
 from src.application.contracts.commands import (
     ApprovePaymentIntentCommand,
     CreatePaymentIntentCommand,
+    RejectPaymentIntentCommand,
 )
 from src.application.contracts.queries import (
     GetCheckoutStateQuery,
@@ -13,6 +14,7 @@ from src.application.contracts.queries import (
     ListPaymentIntentsQuery,
 )
 from src.domain.errors import AccessDeniedError
+from src.domain.payments.payment_intent.value_objects import PaymentIntentRejectReason
 from src.infrastructure.di.composition import build_runtime
 from src.infrastructure.integrations.in_memory.bonus_wallet import (
     InMemoryBonusWalletPort,
@@ -270,6 +272,86 @@ def test_parent_can_get_checkout_state_for_active_access() -> None:
     assert result.access_grant.access_grant_id == grant.access_grant_id
     assert result.available_actions.can_create_payment_intent is False
     assert result.available_actions.next_action == "view_access"
+
+
+def test_admin_payment_view_marks_conflict_existing_access() -> None:
+    runtime = build_runtime()
+    first = runtime.facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-admin-conflict-1",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+    runtime.facade.approve_payment_intent(
+        ApprovePaymentIntentCommand(
+            payment_intent_id=first.payment_intent_id,
+            admin_id="admin-1",
+            admin_roles=("admin",),
+            access_grant_id="",
+        )
+    )
+    second = runtime.facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-admin-conflict-2",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+
+    result = runtime.facade.get_payment_intent(
+        GetPaymentIntentQuery(
+            payment_intent_id=second.payment_intent_id,
+            actor_id="admin-1",
+            actor_roles=("admin",),
+        )
+    )
+
+    assert result.review_state == "conflict_existing_access"
+    assert result.recommended_reject_reason == "conflict_existing_access"
+
+
+def test_admin_reject_persists_enum_reason_in_view() -> None:
+    runtime = build_runtime()
+    payment = runtime.facade.create_payment_intent(
+        CreatePaymentIntentCommand(
+            payment_intent_id="",
+            parent_id="parent-1",
+            student_id="student-1",
+            offer_id="course-1-standard",
+            attribution_token=None,
+            bonus_amount=None,
+            idempotency_key="idem-admin-reject-view-1",
+            actor_id="parent-1",
+            actor_roles=("parent",),
+        )
+    )
+
+    result = runtime.facade.reject_payment_intent(
+        RejectPaymentIntentCommand(
+            payment_intent_id=payment.payment_intent_id,
+            admin_id="admin-1",
+            admin_roles=("admin",),
+            reason=PaymentIntentRejectReason.STALE_PENDING_INTENT,
+        )
+    )
+
+    assert result.status == "rejected"
+    assert result.rejected_reason == "stale_pending_intent"
+    assert result.review_state == "rejected"
+    assert result.recommended_reject_reason == "stale_pending_intent"
 
 
 def test_denied_admin_approve_attempt_is_retained_as_audit_evidence() -> None:
