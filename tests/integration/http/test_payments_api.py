@@ -180,10 +180,15 @@ def test_parent_can_get_checkout_state() -> None:
     )
     assert pending_resp.status_code == 200
     assert pending_resp.json()["checkout_state"] == "pending_payment"
+    assert pending_resp.json()["selected_offer"]["offer_id"] == "course-1-standard"
+    assert pending_resp.json()["purchased_offer"] is None
     assert (
         pending_resp.json()["latest_payment_intent"]["payment_intent_id"] == payment_id
     )
     assert pending_resp.json()["access_grant"] is None
+    assert (
+        pending_resp.json()["available_actions"]["next_action"] == "wait_for_approval"
+    )
 
     approve_resp = client.post(
         f"/v1/admin/payments/{payment_id}/approve",
@@ -198,7 +203,10 @@ def test_parent_can_get_checkout_state() -> None:
     )
     assert access_resp.status_code == 200
     assert access_resp.json()["checkout_state"] == "access_granted"
+    assert access_resp.json()["selected_offer"]["offer_id"] == "course-1-standard"
+    assert access_resp.json()["purchased_offer"]["offer_id"] == "course-1-standard"
     assert access_resp.json()["access_grant"]["status"] == "active"
+    assert access_resp.json()["available_actions"]["next_action"] == "view_access"
 
 
 def test_metrics_endpoint_exposes_prometheus_metrics() -> None:

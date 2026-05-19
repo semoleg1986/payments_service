@@ -77,6 +77,23 @@ class CheckoutActionsView:
 
     can_create_payment_intent: bool
     can_retry_payment: bool
+    next_action: str
+    resume_payment_intent_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CheckoutOfferView:
+    """Явный selected/purchased offer block для checkout-state."""
+
+    offer_id: str
+    course_id: str
+    base_price: float
+    final_price: float
+    bonus_amount: int
+    currency: str
+    source: str
+    payment_intent_id: str | None = None
+    access_grant_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +104,8 @@ class CheckoutStateView:
     student_id: str
     course_id: str
     checkout_state: str
+    selected_offer: CheckoutOfferView | None
+    purchased_offer: CheckoutOfferView | None
     latest_payment_intent: PaymentIntentView | None
     access_grant: CourseAccessGrantView | None
     available_actions: CheckoutActionsView

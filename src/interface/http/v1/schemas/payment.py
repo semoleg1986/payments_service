@@ -59,6 +59,24 @@ class CheckoutActionsResponse(BaseModel):
 
     can_create_payment_intent: bool
     can_retry_payment: bool
+    next_action: str
+    resume_payment_intent_id: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class CheckoutOfferResponse(BaseModel):
+    """Явный offer block в checkout-state."""
+
+    offer_id: str
+    course_id: str
+    base_price: float
+    final_price: float
+    bonus_amount: int
+    currency: str
+    source: str
+    payment_intent_id: str | None = None
+    access_grant_id: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -70,6 +88,8 @@ class CheckoutStateResponse(BaseModel):
     student_id: str
     course_id: str
     checkout_state: str
+    selected_offer: CheckoutOfferResponse | None = None
+    purchased_offer: CheckoutOfferResponse | None = None
     latest_payment_intent: PaymentIntentResponse | None = None
     access_grant: CourseAccessGrantResponse | None = None
     available_actions: CheckoutActionsResponse

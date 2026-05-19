@@ -15,6 +15,7 @@ from src.application.contracts.commands import (
 from src.application.contracts.facade import (
     AccessCheckView,
     CheckoutActionsView,
+    CheckoutOfferView,
     CheckoutStateView,
     CourseAccessGrantView,
     PaymentIntentView,
@@ -370,48 +371,86 @@ class PaymentApplicationFacade:
         active_grant_view = (
             self._to_access_view(active_grant) if active_grant is not None else None
         )
+        selected_offer_view = (
+            self._to_checkout_offer_view_from_intent(latest_intent_view)
+            if latest_intent_view is not None
+            else None
+        )
+        purchased_offer_view = (
+            self._to_checkout_offer_view_from_grant(
+                active_grant_view, latest_intent_view
+            )
+            if active_grant_view is not None
+            else None
+        )
 
-        if active_grant_view is not None:
+        has_conflicting_pending_intent = (
+            active_grant_view is not None
+            and latest_intent_view is not None
+            and latest_intent_view.payment_intent_id
+            != active_grant_view.payment_intent_id
+            and latest_intent_view.status == PaymentStatus.PENDING.value
+        )
+
+        if has_conflicting_pending_intent:
+            checkout_state = "conflict_existing_access"
+            actions = CheckoutActionsView(
+                can_create_payment_intent=False,
+                can_retry_payment=False,
+                next_action="view_access",
+            )
+        elif active_grant_view is not None:
             checkout_state = "access_granted"
             actions = CheckoutActionsView(
                 can_create_payment_intent=False,
                 can_retry_payment=False,
+                next_action="view_access",
             )
         elif latest_intent_view is None:
             checkout_state = "idle"
             actions = CheckoutActionsView(
                 can_create_payment_intent=True,
                 can_retry_payment=False,
+                next_action="create_payment_intent",
             )
         elif latest_intent_view.status == PaymentStatus.PENDING.value:
             checkout_state = "pending_payment"
             actions = CheckoutActionsView(
                 can_create_payment_intent=False,
                 can_retry_payment=False,
+                next_action="wait_for_approval",
+                resume_payment_intent_id=latest_intent_view.payment_intent_id,
             )
         elif latest_intent_view.status == PaymentStatus.APPROVED.value:
             checkout_state = "payment_approved"
             actions = CheckoutActionsView(
                 can_create_payment_intent=False,
                 can_retry_payment=False,
+                next_action="wait_for_access_grant",
+                resume_payment_intent_id=latest_intent_view.payment_intent_id,
             )
         elif latest_intent_view.status == PaymentStatus.REJECTED.value:
             checkout_state = "payment_rejected"
             actions = CheckoutActionsView(
                 can_create_payment_intent=True,
                 can_retry_payment=True,
+                next_action="retry_payment",
+                resume_payment_intent_id=latest_intent_view.payment_intent_id,
             )
         elif latest_intent_view.status == PaymentStatus.CANCELLED.value:
             checkout_state = "payment_cancelled"
             actions = CheckoutActionsView(
                 can_create_payment_intent=True,
                 can_retry_payment=True,
+                next_action="retry_payment",
+                resume_payment_intent_id=latest_intent_view.payment_intent_id,
             )
         else:
             checkout_state = "idle"
             actions = CheckoutActionsView(
                 can_create_payment_intent=True,
                 can_retry_payment=False,
+                next_action="create_payment_intent",
             )
 
         return CheckoutStateView(
@@ -419,6 +458,8 @@ class PaymentApplicationFacade:
             student_id=query.student_id,
             course_id=query.course_id,
             checkout_state=checkout_state,
+            selected_offer=selected_offer_view,
+            purchased_offer=purchased_offer_view,
             latest_payment_intent=latest_intent_view,
             access_grant=active_grant_view,
             available_actions=actions,
@@ -480,6 +521,74 @@ class PaymentApplicationFacade:
             created_at=grant.meta.created_at,
             updated_at=grant.meta.updated_at,
             version=grant.meta.version,
+        )
+
+    @staticmethod
+    def _to_checkout_offer_view_from_intent(
+        intent: PaymentIntentView,
+    ) -> CheckoutOfferView:
+        return CheckoutOfferView(
+            offer_id=intent.offer_id,
+            course_id=intent.course_id,
+            base_price=intent.base_price,
+            final_price=intent.final_price,
+            bonus_amount=intent.bonus_amount,
+            currency=intent.currency,
+            source="latest_payment_intent",
+            payment_intent_id=intent.payment_intent_id,
+        )
+
+    def _to_checkout_offer_view_from_grant(
+        self,
+        grant: CourseAccessGrantView,
+        latest_intent: PaymentIntentView | None,
+    ) -> CheckoutOfferView:
+        source_intent = latest_intent
+        if (
+            source_intent is None
+            or source_intent.payment_intent_id != grant.payment_intent_id
+        ):
+            intent = self.payment_repo.get(grant.payment_intent_id)
+            source_intent = (
+                self._to_payment_view(intent) if intent is not None else None
+            )
+
+        if source_intent is not None:
+            return CheckoutOfferView(
+                offer_id=grant.offer_id,
+                course_id=grant.course_id,
+                base_price=source_intent.base_price,
+                final_price=source_intent.final_price,
+                bonus_amount=source_intent.bonus_amount,
+                currency=source_intent.currency,
+                source="access_grant",
+                payment_intent_id=grant.payment_intent_id,
+                access_grant_id=grant.access_grant_id,
+            )
+
+        offer = self.commercial_catalog.get_offer(grant.offer_id)
+        course = self.course_catalog.get_course(grant.course_id)
+        currency = (
+            offer.currency
+            if offer is not None
+            else (course.currency if course is not None else "USD")
+        )
+        base_price = (
+            float(offer.price)
+            if offer is not None
+            else (float(course.price) if course is not None else 0.0)
+        )
+
+        return CheckoutOfferView(
+            offer_id=grant.offer_id,
+            course_id=grant.course_id,
+            base_price=base_price,
+            final_price=base_price,
+            bonus_amount=0,
+            currency=currency,
+            source="access_grant",
+            payment_intent_id=grant.payment_intent_id,
+            access_grant_id=grant.access_grant_id,
         )
 
     def _append_denied_admin_decision(

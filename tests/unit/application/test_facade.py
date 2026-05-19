@@ -218,10 +218,14 @@ def test_parent_can_get_checkout_state_for_pending_intent() -> None:
     )
 
     assert result.checkout_state == "pending_payment"
+    assert result.selected_offer is not None
+    assert result.selected_offer.offer_id == "course-1-standard"
+    assert result.purchased_offer is None
     assert result.latest_payment_intent is not None
     assert result.latest_payment_intent.payment_intent_id == payment.payment_intent_id
     assert result.access_grant is None
     assert result.available_actions.can_create_payment_intent is False
+    assert result.available_actions.next_action == "wait_for_approval"
 
 
 def test_parent_can_get_checkout_state_for_active_access() -> None:
@@ -258,9 +262,14 @@ def test_parent_can_get_checkout_state_for_active_access() -> None:
     )
 
     assert result.checkout_state == "access_granted"
+    assert result.selected_offer is not None
+    assert result.selected_offer.offer_id == "course-1-standard"
+    assert result.purchased_offer is not None
+    assert result.purchased_offer.access_grant_id == grant.access_grant_id
     assert result.access_grant is not None
     assert result.access_grant.access_grant_id == grant.access_grant_id
     assert result.available_actions.can_create_payment_intent is False
+    assert result.available_actions.next_action == "view_access"
 
 
 def test_denied_admin_approve_attempt_is_retained_as_audit_evidence() -> None:
