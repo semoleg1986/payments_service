@@ -20,6 +20,45 @@ def _request_id(request: Request) -> str | None:
     return getattr(request.state, "request_id", None)
 
 
+def _correlation_id(request: Request) -> str | None:
+    return getattr(request.state, "correlation_id", None)
+
+
+def _headers(request: Request) -> dict[str, str]:
+    headers = {}
+    request_id = _request_id(request)
+    correlation_id = _correlation_id(request)
+    if request_id is not None:
+        headers["X-Request-ID"] = request_id
+    if correlation_id is not None:
+        headers["X-Correlation-ID"] = correlation_id
+    return headers
+
+
+def _problem(
+    request: Request,
+    *,
+    status: int,
+    title: str,
+    problem_type: str,
+    detail: object,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status,
+        content={
+            "type": problem_type,
+            "title": title,
+            "status": status,
+            "detail": detail,
+            "instance": str(request.url.path),
+            "request_id": _request_id(request),
+            "correlation_id": _correlation_id(request),
+        },
+        headers=_headers(request),
+        media_type="application/problem+json",
+    )
+
+
 def install_error_handlers(app: FastAPI) -> None:
     """Регистрирует обработчики исключений."""
 
@@ -28,16 +67,12 @@ def install_error_handlers(app: FastAPI) -> None:
         request: Request,
         exc: RequestValidationError,
     ) -> JSONResponse:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "type": VALIDATION_ERROR,
-                "title": "Ошибка валидации",
-                "status": 422,
-                "detail": str(exc),
-                "instance": str(request.url.path),
-                "request_id": _request_id(request),
-            },
+        return _problem(
+            request,
+            status=422,
+            title="Ошибка валидации",
+            problem_type=VALIDATION_ERROR,
+            detail=str(exc),
         )
 
     @app.exception_handler(AccessDeniedError)
@@ -45,16 +80,12 @@ def install_error_handlers(app: FastAPI) -> None:
         request: Request,
         exc: AccessDeniedError,
     ) -> JSONResponse:
-        return JSONResponse(
-            status_code=403,
-            content={
-                "type": ACCESS_DENIED,
-                "title": "Доступ запрещен",
-                "status": 403,
-                "detail": str(exc),
-                "instance": str(request.url.path),
-                "request_id": _request_id(request),
-            },
+        return _problem(
+            request,
+            status=403,
+            title="Доступ запрещен",
+            problem_type=ACCESS_DENIED,
+            detail=str(exc),
         )
 
     @app.exception_handler(NotFoundError)
@@ -62,16 +93,12 @@ def install_error_handlers(app: FastAPI) -> None:
         request: Request,
         exc: NotFoundError,
     ) -> JSONResponse:
-        return JSONResponse(
-            status_code=404,
-            content={
-                "type": NOT_FOUND,
-                "title": "Сущность не найдена",
-                "status": 404,
-                "detail": str(exc),
-                "instance": str(request.url.path),
-                "request_id": _request_id(request),
-            },
+        return _problem(
+            request,
+            status=404,
+            title="Сущность не найдена",
+            problem_type=NOT_FOUND,
+            detail=str(exc),
         )
 
     @app.exception_handler(InvariantViolationError)
@@ -79,28 +106,20 @@ def install_error_handlers(app: FastAPI) -> None:
         request: Request,
         exc: InvariantViolationError,
     ) -> JSONResponse:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "type": INVARIANT_VIOLATION,
-                "title": "Нарушение бизнес-инварианта",
-                "status": 400,
-                "detail": str(exc),
-                "instance": str(request.url.path),
-                "request_id": _request_id(request),
-            },
+        return _problem(
+            request,
+            status=400,
+            title="Нарушение бизнес-инварианта",
+            problem_type=INVARIANT_VIOLATION,
+            detail=str(exc),
         )
 
     @app.exception_handler(Exception)
     async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-        return JSONResponse(
-            status_code=500,
-            content={
-                "type": INTERNAL_ERROR,
-                "title": "Внутренняя ошибка сервиса",
-                "status": 500,
-                "detail": str(exc),
-                "instance": str(request.url.path),
-                "request_id": _request_id(request),
-            },
+        return _problem(
+            request,
+            status=500,
+            title="Внутренняя ошибка сервиса",
+            problem_type=INTERNAL_ERROR,
+            detail="Unhandled server error.",
         )

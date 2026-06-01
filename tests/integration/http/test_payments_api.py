@@ -108,12 +108,18 @@ def test_request_id_is_returned_in_error_response() -> None:
         headers={
             **_headers("parent-token"),
             "X-Request-ID": "req-fixed-001",
+            "X-Correlation-ID": "corr-fixed-001",
         },
         json={"parent_id": "parent-1"},
     )
     assert resp.status_code == 422
+    assert resp.headers.get("content-type") == "application/problem+json"
     assert resp.headers.get("X-Request-ID") == "req-fixed-001"
+    assert resp.headers.get("X-Correlation-ID") == "corr-fixed-001"
+    assert resp.json().get("type") == "https://api.example.com/problems/validation"
+    assert resp.json().get("status") == 422
     assert resp.json().get("request_id") == "req-fixed-001"
+    assert resp.json().get("correlation_id") == "corr-fixed-001"
 
 
 def test_admin_can_list_and_get_payment_intents() -> None:
