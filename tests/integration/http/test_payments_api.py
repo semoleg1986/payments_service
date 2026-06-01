@@ -122,6 +122,33 @@ def test_request_id_is_returned_in_error_response() -> None:
     assert resp.json().get("correlation_id") == "corr-fixed-001"
 
 
+def test_http_exception_is_returned_as_problem_json() -> None:
+    wiring._runtime = None  # type: ignore[attr-defined]
+    reset_metrics()
+    reset_rate_limiter()
+    app = create_app()
+    app.dependency_overrides[get_access_token_verifier] = lambda: _FakeVerifier()
+    client = TestClient(app)
+
+    resp = client.get(
+        "/internal/v1/access/course-1/student-1",
+        headers={
+            "X-Service-Token": "wrong-token",
+            "X-Request-ID": "req-fixed-http-001",
+            "X-Correlation-ID": "corr-fixed-http-001",
+        },
+    )
+
+    assert resp.status_code == 401
+    assert resp.headers.get("content-type") == "application/problem+json"
+    assert resp.headers.get("X-Request-ID") == "req-fixed-http-001"
+    assert resp.headers.get("X-Correlation-ID") == "corr-fixed-http-001"
+    assert resp.json().get("type") == "https://api.example.com/problems/unauthorized"
+    assert resp.json().get("status") == 401
+    assert resp.json().get("request_id") == "req-fixed-http-001"
+    assert resp.json().get("correlation_id") == "corr-fixed-http-001"
+
+
 def test_admin_can_list_and_get_payment_intents() -> None:
     wiring._runtime = None  # type: ignore[attr-defined]
     reset_metrics()

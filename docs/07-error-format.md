@@ -17,6 +17,7 @@
 ## Типовые Ошибки
 
 - `validation_error` (`422`)
+- `unauthorized` (`401`)
 - `access_denied` (`403`)
 - `not_found` (`404`)
 - `conflict` (`409`)
