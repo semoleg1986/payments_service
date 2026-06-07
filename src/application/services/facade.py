@@ -715,17 +715,8 @@ class PaymentApplicationFacade:
             )
 
         offer = self.commercial_catalog.get_offer(grant.offer_id)
-        course = self.course_catalog.get_course(grant.course_id)
-        currency = (
-            offer.currency
-            if offer is not None
-            else (course.currency if course is not None else "USD")
-        )
-        base_price = (
-            float(offer.price)
-            if offer is not None
-            else (float(course.price) if course is not None else 0.0)
-        )
+        currency = offer.currency if offer is not None else "USD"
+        base_price = float(offer.price) if offer is not None else 0.0
 
         return CheckoutOfferView(
             offer_id=grant.offer_id,

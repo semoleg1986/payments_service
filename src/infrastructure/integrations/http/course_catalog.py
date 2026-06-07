@@ -56,18 +56,10 @@ class HttpCourseCatalogPort:
             ) from exc
 
         result_course_id = str(payload.get("course_id", "")).strip()
-        currency = str(payload.get("currency", "")).strip()
-        if not result_course_id or not currency:
+        if not result_course_id:
             raise InvariantViolationError(
                 "course_service вернул некорректный payment-snapshot."
             )
-
-        try:
-            price = float(payload.get("price", 0))
-        except (TypeError, ValueError) as exc:
-            raise InvariantViolationError(
-                "course_service вернул некорректную цену курса."
-            ) from exc
 
         access_ttl_raw = payload.get("access_ttl_days")
         if access_ttl_raw is None:
@@ -82,7 +74,5 @@ class HttpCourseCatalogPort:
 
         return CourseSnapshot(
             course_id=result_course_id,
-            price=price,
-            currency=currency,
             access_ttl_days=access_ttl_days,
         )

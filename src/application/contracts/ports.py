@@ -144,8 +144,6 @@ class CourseSnapshot:
     """Минимальный снимок курса для расчета оплаты."""
 
     course_id: str
-    price: float
-    currency: str
     access_ttl_days: int | None
 
 

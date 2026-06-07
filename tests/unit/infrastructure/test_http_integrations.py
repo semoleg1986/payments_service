@@ -105,8 +105,6 @@ def test_http_course_catalog_parses_snapshot(monkeypatch: pytest.MonkeyPatch) ->
         return _FakeResponse(
             {
                 "course_id": "course-42",
-                "price": 1990,
-                "currency": "USD",
                 "access_ttl_days": 60,
             }
         )
@@ -124,8 +122,6 @@ def test_http_course_catalog_parses_snapshot(monkeypatch: pytest.MonkeyPatch) ->
     snapshot = adapter.get_course("course-42")
     assert snapshot is not None
     assert snapshot.course_id == "course-42"
-    assert snapshot.price == 1990.0
-    assert snapshot.currency == "USD"
     assert snapshot.access_ttl_days == 60
 
 
@@ -367,8 +363,6 @@ def test_http_adapters_forward_correlation_id_when_present(
             return _FakeResponse(
                 {
                     "course_id": "course-42",
-                    "price": 1990,
-                    "currency": "USD",
                     "access_ttl_days": 60,
                 }
             )
